@@ -134,7 +134,8 @@ public partial class App : Application
 
         if (!hasEmbedFlag)
         {
-            Skua.Core.AppStartup.HotKeys.IsHostProcess = true;
+            // Off Windows there is no tab host process: each instance is a standalone client.
+            Skua.Core.AppStartup.HotKeys.IsHostProcess = OperatingSystem.IsWindows();
             Task.Run(() =>
             {
                 IClientFilesService clientFiles = Ioc.Default.GetRequiredService<IClientFilesService>();
@@ -220,6 +221,11 @@ public partial class App : Application
                         try { System.Diagnostics.Process.GetCurrentProcess().Kill(); } catch { }
                     });
                 }
+            }
+            else if (!OperatingSystem.IsWindows())
+            {
+                // The tabbed host re-parents child client windows with Win32 calls; on macOS run a single client window.
+                desktop.MainWindow = new Views.MainWindow { WindowStartupLocation = global::Avalonia.Controls.WindowStartupLocation.CenterScreen };
             }
             else
             {

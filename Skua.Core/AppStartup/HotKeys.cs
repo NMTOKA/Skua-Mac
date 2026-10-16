@@ -484,6 +484,10 @@ public class HotKeys
 
     private static bool CanExecuteHotKey()
     {
+        // Off Windows, hotkeys are only delivered while a Skua window has focus.
+        if (!OperatingSystem.IsWindows())
+            return true;
+
         try
         {
             IntPtr foregroundWindow = GetForegroundWindow();

@@ -1,0 +1,13 @@
+{
+  "name": "skua-flashhost",
+  "version": "1.0.0",
+  "description": "macOS game host for VibeSkua: runs skua.swf in Electron + PepperFlash and bridges ExternalInterface to the .NET client over a local WebSocket.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "8.5.5"
+  }
+}

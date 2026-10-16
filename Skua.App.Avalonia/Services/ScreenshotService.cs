@@ -59,7 +59,8 @@ public class ScreenshotService : IScreenshotService
             }
         });
 #else
-        return Task.FromResult(Array.Empty<byte>());
+        // TODO(macOS): capture the FlashHost window (e.g. via webContents.capturePage).
+        return await Task.FromResult(Array.Empty<byte>());
 #endif
     }
 }

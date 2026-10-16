@@ -81,6 +81,7 @@ public class WinFormsFlashHost : NativeControlHost
 #else
 public class WinFormsFlashHost : NativeControlHost
 {
-    
+    // The game runs in the separate Skua.FlashHost window off Windows; nothing to scale here.
+    public void SetScaleMode(bool isExactFit = false) { }
 }
 #endif

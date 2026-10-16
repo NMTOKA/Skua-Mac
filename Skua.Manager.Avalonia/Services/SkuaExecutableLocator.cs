@@ -12,6 +12,9 @@ internal static class SkuaExecutableLocator
 
     private static string Resolve()
     {
+        if (!OperatingSystem.IsWindows())
+            return ResolveUnix();
+
         string vibePath = Path.Combine(AppContext.BaseDirectory, "VibeSkua.exe");
         if (File.Exists(vibePath))
             return vibePath;
@@ -42,5 +45,22 @@ internal static class SkuaExecutableLocator
         }
 
         return File.Exists(vibePath) ? vibePath : deployedPath;
+    }
+
+    private static string ResolveUnix()
+    {
+        string vibePath = Path.Combine(AppContext.BaseDirectory, "VibeSkua");
+        if (File.Exists(vibePath))
+            return vibePath;
+
+        string repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        foreach (string config in new[] { "Release", "Debug" })
+        {
+            string candidate = Path.Combine(repositoryRoot, "Skua.App.Avalonia", "bin", config, "net10.0", "VibeSkua");
+            if (File.Exists(candidate))
+                return candidate;
+        }
+
+        return vibePath;
     }
 }

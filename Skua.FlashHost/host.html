@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>VibeSkua</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #flash { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<embed id="flash" name="flash" type="application/x-shockwave-flash" src="__SWF_URL__"
+       allowScriptAccess="always" allowNetworking="all" wmode="direct" scale="showall" quality="high">
+<script>
+// Bridge between skua.swf (ExternalInterface) and the .NET MacFlashUtil.
+//
+// .NET -> SWF:  {"id": n, "fn": "name", "args": [...]}   reply {"id": n, "ok": true, "r": value}
+// SWF -> .NET:  {"ev": "name", "a": "concatenated text"}
+//
+// Event args mirror the Windows ActiveX path: Externalizer.as passes its rest args as one
+// array, which the Windows XML parser flattens to a single concatenated string.
+(function () {
+  var flash = document.getElementById('flash');
+  var ws = new WebSocket('ws://127.0.0.1:__PORT__/');
+  var pending = [];
+
+  function send(obj) {
+    var text = JSON.stringify(obj);
+    if (ws.readyState === 1) ws.send(text); else pending.push(text);
+  }
+
+  function flatten(v) {
+    // Windows reads XElement.Value: null/true/false are empty elements, so they add no text.
+    if (v === null || v === undefined || typeof v === 'boolean') return '';
+    if (Object.prototype.toString.call(v) === '[object Array]') return v.map(flatten).join('');
+    if (typeof v === 'object') return Object.keys(v).map(function (k) { return flatten(v[k]); }).join('');
+    return String(v);
+  }
+
+  function emit(name, rest) {
+    send({ ev: name, a: flatten(rest) });
+    return undefined;
+  }
+
+  ws.onopen = function () {
+    while (pending.length) ws.send(pending.shift());
+  };
+  ws.onclose = function () { window.close(); };
+  ws.onmessage = function (msg) {
+    var req;
+    try { req = JSON.parse(msg.data); } catch (e) { return; }
+    var reply = { id: req.id, ok: true, r: null };
+    try {
+      var fn = flash[req.fn];
+      if (typeof fn !== 'function') throw new Error('not a Flash callback: ' + req.fn);
+      var r = fn.apply(flash, req.args || []);
+      reply.r = (r === undefined) ? null : r;
+    } catch (e) {
+      reply.ok = false;
+      reply.err = String(e && e.message || e);
+    }
+    send(reply);
+  };
+
+  // Names skua.swf calls via ExternalInterface.call.
+  ['requestLoadGame', 'debug', 'loaded', 'pext', 'openWebsite', 'packet', 'packetFromServer']
+    .forEach(function (name) { window[name] = function (rest) { return emit(name, rest); }; });
+
+  // Flash evaluates ExternalInterface.call('pre-load') as the expression `pre - load(...)`.
+  window.pre = 0;
+  window.load = function (rest) { emit('pre-load', rest); return 0; };
+})();
+</script>
+</body>
+</html>
