@@ -1,7 +1,7 @@
 #!/bin/bash
-# Builds a double-clickable VibeSkua.app for Apple Silicon.
+# Builds a double-clickable "Skua Mac.app" (the VibeSkua client) for Apple Silicon.
 #
-#   ./build-mac.sh            -> Build/macOS/VibeSkua.app
+#   ./build-mac.sh            -> Build/macOS/Skua Mac.app
 #
 # Requires the .NET 10 SDK and Node.js. The app is self-contained (no .NET install needed to run it),
 # bundles the Electron game host, and is ad-hoc signed. PepperFlash still comes from the user's
@@ -14,7 +14,8 @@ OUT="$ROOT/Build/macOS"
 # that codesign rejects. The finished bundle is copied to $OUT at the end.
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-APP="$STAGE/VibeSkua.app"
+APP_NAME="Skua Mac"
+APP="$STAGE/$APP_NAME.app"
 CONTENTS="$APP/Contents"
 MACOS="$CONTENTS/MacOS"
 RID="osx-arm64"
@@ -22,7 +23,7 @@ VERSION="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$ROOT/Directory.Build.
 
 DOTNET="${DOTNET:-$(command -v dotnet || echo "$HOME/.dotnet/dotnet")}"
 
-echo "==> Building VibeSkua $VERSION ($RID)"
+echo "==> Building $APP_NAME $VERSION ($RID)"
 mkdir -p "$MACOS" "$CONTENTS/Resources" "$OUT"
 
 "$DOTNET" publish "$ROOT/Skua.App.Avalonia/Skua.App.Avalonia.csproj" \
@@ -57,8 +58,8 @@ cat > "$CONTENTS/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>VibeSkua</string>
-  <key>CFBundleDisplayName</key><string>VibeSkua</string>
+  <key>CFBundleName</key><string>$APP_NAME</string>
+  <key>CFBundleDisplayName</key><string>$APP_NAME</string>
   <key>CFBundleIdentifier</key><string>com.vibeskua.client</string>
   <key>CFBundleExecutable</key><string>VibeSkua</string>
   <key>CFBundleIconFile</key><string>VibeSkua</string>
@@ -77,12 +78,12 @@ xattr -cr "$APP"
 codesign --force --deep --sign - "$APP"
 codesign --verify --deep "$APP"
 
-if pgrep -f "$OUT/VibeSkua.*\.app/Contents/MacOS/VibeSkua\$" >/dev/null; then
-  echo "error: VibeSkua is running from $OUT. Quit it and run this again." >&2
+if pgrep -f "$OUT/.*\.app/Contents/MacOS/VibeSkua\$" >/dev/null; then
+  echo "error: $APP_NAME is running from $OUT. Quit it and run this again." >&2
   exit 1
 fi
-# iCloud Drive keeps a replaced bundle as a conflict copy ("VibeSkua 2.app"); drop those so only the
-# current build is left to open.
-rm -rf "$OUT/VibeSkua.app" "$OUT"/VibeSkua\ [0-9]*.app
-ditto "$APP" "$OUT/VibeSkua.app"
-echo "==> Done: $OUT/VibeSkua.app ($(du -sh "$OUT/VibeSkua.app" | cut -f1))"
+# iCloud Drive keeps a replaced bundle as a conflict copy ("Skua Mac 2.app"). Drop those, and bundles from
+# before the rename (VibeSkua.app), so only the current build is left to open.
+rm -rf "$OUT/$APP_NAME.app" "$OUT/$APP_NAME "[0-9]*.app "$OUT/VibeSkua.app" "$OUT"/VibeSkua\ [0-9]*.app
+ditto "$APP" "$OUT/$APP_NAME.app"
+echo "==> Done: $OUT/$APP_NAME.app ($(du -sh "$OUT/$APP_NAME.app" | cut -f1))"

@@ -21,7 +21,7 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(MainMenuViewModel mainMenu, IDiscordWebhookService discordWebhookService)
     {
         MainMenu = mainMenu;
-        _title = $"VibeSkua V{ClientFileSources.DisplayVersion}";
+        _title = System.OperatingSystem.IsMacOS() ? "Skua Mac" : $"VibeSkua V{ClientFileSources.DisplayVersion}";
         discordWebhookService.Initialize();
     }
 

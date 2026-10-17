@@ -24,11 +24,11 @@ Tested on macOS 27: the game loads to the login screen, and calls and events flo
 ./build-mac.sh
 ```
 
-This produces `Build/macOS/VibeSkua.app` (self-contained, about 320 MB, ad-hoc signed). Double-click it, or
-drag it to `/Applications`. VibeSkua shrinks to its title and menu bar, and the game appears directly underneath,
-docked to it: move or resize the VibeSkua bar and the game follows. Log in in the game. Set `SKUA_UNDOCKED=1` to
+This produces `Build/macOS/Skua Mac.app` (self-contained, about 320 MB, ad-hoc signed). Double-click it, or
+drag it to `/Applications`. The client shows as **Skua Mac** and shrinks to its title and menu bar, and the game appears directly underneath,
+docked to it: move or resize the Skua Mac bar and the game follows. Log in in the game. Set `SKUA_UNDOCKED=1` to
 get a separate, freely movable game window instead.
-On first launch macOS may ask to let VibeSkua find devices on the local network. The client and the game
+On first launch macOS may ask to let Skua Mac find devices on the local network. The client and the game
 window talk over a local connection.
 
 ## Development build
