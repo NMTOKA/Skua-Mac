@@ -144,6 +144,13 @@ internal static class Program
             {
                 RenderingMode = new[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Software },
                 CompositionMode = new[] { Win32CompositionMode.LowLatencyDxgiSwapChain, Win32CompositionMode.WinUIComposition, Win32CompositionMode.RedirectionSurface }
+            })
+            // macOS: Avalonia's default OpenGL path allocates a new IOSurface per frame; Metal is far cheaper.
+            .With(new AvaloniaNativePlatformOptions
+            {
+                RenderingMode = Environment.GetEnvironmentVariable("SKUA_RENDER") == "gl"
+                    ? new[] { AvaloniaNativeRenderingMode.OpenGl, AvaloniaNativeRenderingMode.Software }
+                    : new[] { AvaloniaNativeRenderingMode.Metal, AvaloniaNativeRenderingMode.OpenGl, AvaloniaNativeRenderingMode.Software }
             });
 #if DEBUG
         builder = builder.WithDeveloperTools();

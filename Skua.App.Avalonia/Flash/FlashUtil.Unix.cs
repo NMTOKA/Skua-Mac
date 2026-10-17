@@ -293,8 +293,33 @@ public class FlashUtil : IFlashUtil
         return defaultValue is T typed ? typed : default!;
     }
 
+    // SKUA_BRIDGE_STATS=1 prints calls per second by function to stderr every 10 s (performance diagnostics).
+    private static readonly ConcurrentDictionary<string, int>? _callStats =
+        Environment.GetEnvironmentVariable("SKUA_BRIDGE_STATS") == "1" ? StartStats() : null;
+
+    private static ConcurrentDictionary<string, int> StartStats()
+    {
+        ConcurrentDictionary<string, int> stats = new();
+        new Thread(() =>
+        {
+            while (true)
+            {
+                Thread.Sleep(10_000);
+                var snapshot = stats.ToArray();
+                stats.Clear();
+                int total = snapshot.Sum(kv => kv.Value);
+                Console.Error.WriteLine($"[bridge] {total / 10.0:F1} calls/s: " +
+                    string.Join(", ", snapshot.OrderByDescending(kv => kv.Value).Take(8).Select(kv => $"{kv.Key}={kv.Value / 10.0:F1}")));
+            }
+        }) { IsBackground = true, Name = "Bridge stats" }.Start();
+        return stats;
+    }
+
     public object Call(string function, Type type, params object[] args)
     {
+        if (_callStats is not null)
+            _callStats.AddOrUpdate(function is "getGameObject" or "isNull" && args.Length > 0 ? $"{function}({args[0]})" : function, 1, (_, n) => n + 1);
+
         if (_lazyManager.Value.ShouldExit && Thread.CurrentThread.Name == "Script Thread")
             _lazyManager.Value.ScriptCts?.Token.ThrowIfCancellationRequested();
 
@@ -303,7 +328,8 @@ public class FlashUtil : IFlashUtil
             return default!;
 
         int id = Interlocked.Increment(ref _nextId);
-        TaskCompletionSource<JObject> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        // The caller blocks on this; no async continuations, so complete inline (no thread-pool hop per call).
+        TaskCompletionSource<JObject> tcs = new();
         _pending[id] = tcs;
 
         try

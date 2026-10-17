@@ -19,6 +19,7 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
     private GameStateChannel? _stateChannel;
     private GameApiThreadSafeWrapper? _apiWrapper;
     private const int _timerDelay = 20;
+    private const int PlayingCheckInterval = 100;
     private readonly TimeLimiter _limit = new();
     private readonly ILogService _logger;
     private readonly IDialogService _dialogService;
@@ -286,6 +287,8 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
         int lastConnChange = 0;
         string lastConnDetail = "";
         bool wasPlaying = false;
+        bool currentPlaying = false;
+        long lastPlayingCheck = 0;
 
         Stopwatch sw = new();
 
@@ -295,11 +298,19 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
             {
                 sw.Restart();
 
-                bool currentPlaying = Flash.IsWorldLoaded && Player.Playing;
+                // The loop ticks every 20 ms for script handlers, but nothing below needs the playing state
+                // that fresh; each check is several game calls (costly over the macOS game-window bridge).
+                long now = Environment.TickCount64;
+                if (now - lastPlayingCheck >= PlayingCheckInterval)
+                {
+                    lastPlayingCheck = now;
+                    currentPlaying = Flash.IsWorldLoaded && Player.Playing;
+                }
+
                 if (currentPlaying)
                 {
                     wasPlaying = true;
-                    Servers.LastIP = Player.ServerIP ?? Servers.LastIP;
+                    _limit.LimitedRun("serverIp", 1000, () => Servers.LastIP = Player.ServerIP ?? Servers.LastIP);
 
                     if (Options.RestPackets && !Player.InCombat)
                         _limit.LimitedRun("rest", 1200, () => Send.Packet("%xt%zm%restRequest%1%%"));
@@ -335,7 +346,7 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
                     }
                 });
 
-                _limit.LimitedRun("connDetail", 100, () => (lastConnChange, lastConnDetail) = CheckStuckonLoading(lastConnChange, lastConnDetail));
+                _limit.LimitedRun("connDetail", 500, () => (lastConnChange, lastConnDetail) = CheckStuckonLoading(lastConnChange, lastConnDetail));
 
                 if (Manager.ScriptRunning)
                     RunScriptHandlers();

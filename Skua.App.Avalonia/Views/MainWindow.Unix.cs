@@ -26,6 +26,13 @@ public partial class MainWindow
 
         _flash.FlashCall += OnExternalHostCall;
         host.HostExited += OnHostExited;
+
+        // SKUA_FPS_OVERLAY=1 shows Avalonia's frame-rate overlay (diagnosing redraws that waste CPU).
+        string? overlay = Environment.GetEnvironmentVariable("SKUA_FPS_OVERLAY");
+        if (overlay == "1")
+            RendererDiagnostics.DebugOverlays = global::Avalonia.Rendering.RendererDebugOverlays.Fps;
+        else if (overlay == "dirty")
+            RendererDiagnostics.DebugOverlays = global::Avalonia.Rendering.RendererDebugOverlays.DirtyRects;
         Closing += (_, _) => _closingForGood = true;
 
         if (FlashUtil.IsDocked)

@@ -566,7 +566,7 @@
                         MinWidth="320"
                         MaxWidth="450">
                     <StackPanel Spacing="16" HorizontalAlignment="Center">
-                        <ProgressBar IsIndeterminate="True" Height="4" Width="240" HorizontalAlignment="Center" />
+                        <ProgressBar IsIndeterminate="{Binding IsBusy}" Height="4" Width="240" HorizontalAlignment="Center" />
                         <TextBlock Text="{Binding ProgressReportMessage, FallbackValue='Processing...'}"
                                    FontSize="12"
                                    FontWeight="SemiBold"
@@ -604,7 +604,7 @@
                              VerticalAlignment="Center"
                              IsVisible="{Binding !IsBusy}" />
                     
-                    <ProgressBar IsIndeterminate="True"
+                    <ProgressBar IsIndeterminate="{Binding IsBusy}"
                                  Width="40" Height="4"
                                  VerticalAlignment="Center"
                                  IsVisible="{Binding IsBusy}" />

@@ -51,6 +51,9 @@
     try { req = JSON.parse(msg.data); } catch (e) { return; }
     var reply = { id: req.id, ok: true, r: null };
     if (req.fn && req.fn.indexOf('__') === 0) {
+      // Headless: like the Windows 1x1 viewport, shrink the plugin so Flash skips most rendering.
+      if (req.fn === '__hide') { flash.style.width = '1px'; flash.style.height = '1px'; }
+      if (req.fn === '__show') { flash.style.width = ''; flash.style.height = ''; }
       window.skuaHost.invoke(req.fn, req.args).then(
         function (r) { reply.r = (r === undefined) ? null : r; send(reply); },
         function (e) { reply.ok = false; reply.err = String(e && e.message || e); send(reply); });

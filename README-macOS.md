@@ -52,6 +52,12 @@ cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 | Sound alerts | Tone beeps | System alert sound |
 | Auto-update | Velopack | Not set up |
 
+## Performance diagnostics
+
+- `SKUA_BRIDGE_STATS=1`: prints game calls per second, by function, to stderr every 10 s.
+- `SKUA_FPS_OVERLAY=1` (frame rate) or `SKUA_FPS_OVERLAY=dirty` (redrawn regions): Avalonia render overlays.
+- `SKUA_RENDER=gl`: use Avalonia's OpenGL renderer instead of Metal (Metal is the default and much cheaper).
+
 ## Where things live
 
 - Game profiles (Flash settings, saved logins): `~/Library/Application Support/skua-flashhost/instances/<n>`.

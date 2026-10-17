@@ -361,6 +361,9 @@ public partial class MainWindow : Window
             _isFlashLoaded = true;
             Dispatcher.UIThread.Post(() =>
             {
+                // An indeterminate ProgressBar keeps animating (and redrawing the window every frame)
+                // even while hidden; turn the animation off, not just the visibility.
+                LoadingBar.IsIndeterminate = false;
                 LoadingBar.IsVisible = false;
                 FlashHost.IsVisible = !_options.HeadlessMode;
                 HeadlessOverlay.IsVisible = _options.HeadlessMode;
