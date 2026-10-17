@@ -1,5 +1,8 @@
 #if !IS_WINDOWS
+using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Skua.App.Avalonia.Flash;
@@ -24,12 +27,100 @@ public partial class MainWindow
         _flash.FlashCall += OnExternalHostCall;
         host.HostExited += OnHostExited;
         Closing += (_, _) => _closingForGood = true;
+
+        if (FlashUtil.IsDocked)
+        {
+            PositionChanged += (_, _) => DockGameWindow();
+            SizeChanged += (_, _) => DockGameWindow();
+            Activated += (_, _) => ExternalHost?.RaiseHost();
+            PropertyChanged += (_, e) =>
+            {
+                if (e.Property == WindowStateProperty)
+                    OnWindowStateChanged();
+            };
+        }
+    }
+
+    private bool _docked;
+
+    /// <summary>
+    /// Shrinks this window to its title and menu bars and keeps the frameless game window directly underneath,
+    /// at the same width, so the pair looks and moves like the single embedded window on Windows.
+    /// </summary>
+    private void EnterDockedLayout()
+    {
+        if (_docked || !FlashUtil.IsDocked)
+            return;
+        _docked = true;
+
+        double chrome = TitleBar.Bounds.Height + TopNavBorder.Bounds.Height;
+        MinHeight = chrome;
+        MaxHeight = chrome;
+        Height = chrome;
+        KeepDockedPairOnScreen();
+        DockGameWindow();
+    }
+
+    private double GameHeightFor(double width) => Math.Round(width * GameAspect);
+
+    // skua.swf's stage is 958x550.
+    private const double GameAspect = 550.0 / 958.0;
+
+    private void DockGameWindow()
+    {
+        if (!_docked || ExternalHost is not FlashUtil host || WindowState == WindowState.Minimized)
+            return;
+
+        double scaling = DesktopScaling > 0 ? DesktopScaling : 1;
+        double x = Position.X / scaling;
+        double y = Position.Y / scaling + Bounds.Height;
+        double width = Bounds.Width;
+        host.DockHost(x, y, width, GameHeightFor(width));
+    }
+
+    /// <summary>Moves this window up if the game window would hang off the bottom of the screen.</summary>
+    private void KeepDockedPairOnScreen()
+    {
+        Screen? screen = Screens.ScreenFromWindow(this);
+        if (screen is null)
+            return;
+
+        double scaling = DesktopScaling > 0 ? DesktopScaling : 1;
+        double bottom = Position.Y / scaling + Height + GameHeightFor(Bounds.Width);
+        double overflow = bottom - screen.WorkingArea.Bottom / scaling;
+        if (overflow > 0)
+            Position = new PixelPoint(Position.X, Math.Max(screen.WorkingArea.Y, (int)(Position.Y - overflow * scaling)));
+    }
+
+    private void OnWindowStateChanged()
+    {
+        if (!_docked || ExternalHost is not FlashUtil host)
+            return;
+
+        if (WindowState == WindowState.Minimized)
+        {
+            host.SetHostVisible(false);
+        }
+        else
+        {
+            if (!_options.HeadlessMode)
+                host.SetHostVisible(true);
+            DockGameWindow();
+        }
     }
 
     private void OnExternalHostCall(string function, params object[] args)
     {
         switch (function)
         {
+            case "requestLoadGame":
+                // First message from a freshly started game window: attach it under the toolbar.
+                if (_docked)
+                    DockGameWindow();
+                else
+                    EnterDockedLayout();
+                break;
+
             case "loaded":
                 ExternalHost?.SetHostTitle(_mainViewModel.Title ?? "VibeSkua");
                 ApplyExternalHeadless(_options.HeadlessMode);

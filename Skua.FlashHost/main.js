@@ -5,6 +5,7 @@
 //   --swf=<path>     absolute path to skua.swf
 //   --ppapi=<path>   optional PepperFlashPlayer.plugin path (defaults to the Artix Game Launcher's copy)
 //   --title=<text>   optional window title
+//   --docked         frameless window positioned by the client under its toolbar (no Dock icon)
 //
 // PepperFlash is x86_64-only, so this runs as Electron 8 (x64) under Rosetta 2.
 
@@ -27,6 +28,7 @@ const port = parseInt(arg('port', '0'), 10);
 const swfPath = path.resolve(arg('swf', path.join(__dirname, 'skua.swf')));
 const ppapiPath = arg('ppapi', DEFAULT_PPAPI);
 const title = arg('title', 'VibeSkua - Game');
+const docked = process.argv.includes('--docked');
 
 if (!port) {
   console.error('flashhost: missing --port');
@@ -100,12 +102,17 @@ app.on('ready', () => {
   writeTrustFiles([path.dirname(swfPath), dir]);
 
   Menu.setApplicationMenu(null);
+  // Docked: the client window is the only one with a title bar and Dock icon; this window sits under it.
+  if (docked && app.dock) app.dock.hide();
   const win = new BrowserWindow({
     width: 958,
     height: 550,
     title,
     backgroundColor: '#000000',
     useContentSize: true,
+    frame: !docked,
+    resizable: !docked,
+    fullscreenable: !docked,
     webPreferences: {
       plugins: true,
       nodeIntegration: false,
@@ -127,8 +134,16 @@ app.on('ready', () => {
 
 // Control calls from .NET (see FlashUtil.Unix.cs), routed through host.html.
 function registerControlHandlers(win) {
-  ipcMain.handle('__show', () => { win.show(); return 'true'; });
-  ipcMain.handle('__hide', () => { win.hide(); return 'true'; });
+  let hiddenByClient = false;
+  ipcMain.handle('__show', () => { hiddenByClient = false; win.show(); return 'true'; });
+  ipcMain.handle('__hide', () => { hiddenByClient = true; win.hide(); return 'true'; });
+  // x, y, width, height in screen points (top-left origin).
+  ipcMain.handle('__dock', (_e, x, y, width, height) => {
+    win.setBounds({ x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) });
+    return 'true';
+  });
+  // Bring the window above other apps' windows without taking focus (the client was just activated).
+  ipcMain.handle('__raise', () => { if (!hiddenByClient) win.showInactive(); return 'true'; });
   ipcMain.handle('__focus', () => { win.show(); app.focus({ steal: true }); win.focus(); return 'true'; });
   ipcMain.handle('__setTitle', (_e, text) => { win.setTitle(String(text)); return 'true'; });
   ipcMain.handle('__screenshot', async () => {

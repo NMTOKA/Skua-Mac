@@ -25,7 +25,9 @@ Tested on macOS 27: the game loads to the login screen, and calls and events flo
 ```
 
 This produces `Build/macOS/VibeSkua.app` (self-contained, about 320 MB, ad-hoc signed). Double-click it, or
-drag it to `/Applications`. The client window opens first, then the game window. Log in from the game window.
+drag it to `/Applications`. VibeSkua shrinks to its title and menu bar, and the game appears directly underneath,
+docked to it: move or resize the VibeSkua bar and the game follows. Log in in the game. Set `SKUA_UNDOCKED=1` to
+get a separate, freely movable game window instead.
 On first launch macOS may ask to let VibeSkua find devices on the local network. The client and the game
 window talk over a local connection.
 
@@ -41,7 +43,7 @@ cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 
 | Area | Windows | macOS |
 |---|---|---|
-| Game | ActiveX Flash embedded in the client window | Separate game window (Electron 8 under Rosetta) |
+| Game | ActiveX Flash embedded in the client window | Game window docked under the client's menu bar (Electron 8 under Rosetta) |
 | Multi-account | Tabbed host window | Run VibeSkua again: each instance gets its own game window and profile |
 | Headless mode | 1x1 viewport | Hides the game window; the game keeps running |
 | Hotkeys | Global (Win32) | Work while the client **or** its game window has focus |

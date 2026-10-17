@@ -141,6 +141,8 @@ public class FlashUtil : IFlashUtil
         psi.ArgumentList.Add(hostDir);
         psi.ArgumentList.Add($"--port={port}");
         psi.ArgumentList.Add($"--swf={swfPath}");
+        if (IsDocked)
+            psi.ArgumentList.Add("--docked");
         string? ppapi = Environment.GetEnvironmentVariable("SKUA_PPAPI");
         if (!string.IsNullOrEmpty(ppapi))
             psi.ArgumentList.Add($"--ppapi={ppapi}");
@@ -402,6 +404,50 @@ public class FlashUtil : IFlashUtil
     public void SetHostVisible(bool visible)
     {
         Task.Run(() => Call(visible ? "__show" : "__hide"));
+    }
+
+    /// <summary>
+    /// Whether the game window is frameless and kept under the client's toolbar.
+    /// Set SKUA_UNDOCKED=1 to get a normal, freely movable game window instead.
+    /// </summary>
+    public static bool IsDocked { get; } = Environment.GetEnvironmentVariable("SKUA_UNDOCKED") != "1";
+
+    private (double X, double Y, double Width, double Height)? _pendingDock;
+    private int _dockSending;
+
+    /// <summary>
+    /// Moves the game window to the given screen rectangle (points, top-left origin). Rapid calls while the
+    /// client window is dragged are coalesced so only the latest position is sent.
+    /// </summary>
+    public void DockHost(double x, double y, double width, double height)
+    {
+        _pendingDock = (x, y, width, height);
+        if (Interlocked.Exchange(ref _dockSending, 1) == 1)
+            return;
+
+        Task.Run(() =>
+        {
+            try
+            {
+                while (_pendingDock is { } next)
+                {
+                    _pendingDock = null;
+                    Call("__dock", next.X, next.Y, next.Width, next.Height);
+                }
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _dockSending, 0);
+                if (_pendingDock is { } late)
+                    DockHost(late.X, late.Y, late.Width, late.Height);
+            }
+        });
+    }
+
+    /// <summary>Brings the game window above other apps' windows without taking focus.</summary>
+    public void RaiseHost()
+    {
+        Task.Run(() => Call("__raise"));
     }
 
     /// <summary>Shows the game window and brings it to the front.</summary>
