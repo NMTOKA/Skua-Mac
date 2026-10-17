@@ -46,6 +46,8 @@
 
     <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Windows'))">
         <Compile Remove="Flash\EoLHook.cs" />
+        <!-- Lets community scripts that use System.Windows.Forms compile off Windows. -->
+        <ProjectReference Include="..\Skua.Compat.WinForms\Skua.Compat.WinForms.csproj" />
     </ItemGroup>
 
     <ItemGroup>

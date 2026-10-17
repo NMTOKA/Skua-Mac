@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Non-Windows stand-in for the small part of System.Windows.Forms that community scripts use
+      (e.g. the progress form in CoreBots.cs), so they compile unchanged on macOS/Linux.
+      Only referenced by Skua.App.Avalonia off Windows; Windows uses the real WinForms.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <RootNamespace>System.Windows.Forms</RootNamespace>
+    </PropertyGroup>
+
+</Project>
