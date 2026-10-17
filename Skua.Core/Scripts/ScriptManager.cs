@@ -898,6 +898,8 @@ public partial class ScriptManager : ObservableObject, IScriptManager, IDisposab
             foreach (string file in orderedFiles)
             {
                 string src = sourceCache.TryGetValue(file, out string? cached) ? cached : File.ReadAllText(file);
+                // Hash what is actually compiled, so platform rewrites get their own cache entries.
+                src = Skua.Core.Utils.ScriptPlatformCompat.Apply(src);
                 byte[] srcBytes = Encoding.UTF8.GetBytes(src);
                 if (dependencyGraph.TryGetValue(file, out List<string>? fileDeps) && fileDeps.Count > 0)
                 {

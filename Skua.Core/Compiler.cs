@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text;
+using Skua.Core.Utils;
 using Westwind.Scripting;
 
 namespace Skua.Core;
@@ -210,7 +211,7 @@ public class Compiler : CSharpScriptExecution
     public new bool CompileAssembly(string source, bool noLoad = false)
     {
         ClearErrors();
-        string sourceWithNamespaces = PrependNamespaces(source);
+        string sourceWithNamespaces = PrependNamespaces(ScriptPlatformCompat.Apply(source));
 
         SyntaxTree tree = CSharpSyntaxTree.ParseText(sourceWithNamespaces.Trim(), _parseOptions);
 
@@ -479,7 +480,7 @@ public class Compiler : CSharpScriptExecution
     {
         ClearErrors();
 
-        SyntaxTree tree = CSharpSyntaxTree.ParseText(source.Trim(), _parseOptions);
+        SyntaxTree tree = CSharpSyntaxTree.ParseText(ScriptPlatformCompat.Apply(source).Trim(), _parseOptions);
 
         string fileName = Path.GetFileNameWithoutExtension(outputPath);
         int lastDash = fileName.LastIndexOf('-');
