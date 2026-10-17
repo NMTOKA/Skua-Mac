@@ -50,7 +50,7 @@ public class BackgroundThemeService : ObservableObject
             string sBG = _settingsService.Get<string>("sBG", "Generic2.swf");
             string? customPath = _settingsService.Get<string?>("CustomBackgroundPath", null);
 
-            return !string.IsNullOrEmpty(customPath) ? Path.GetFileName(customPath.Replace("file:///", "").Replace("/", "\\")) : sBG;
+            return !string.IsNullOrEmpty(customPath) ? Path.GetFileName(customPath.Replace("file:///", "").Replace('/', Path.DirectorySeparatorChar)) : sBG;
         }
         set
         {

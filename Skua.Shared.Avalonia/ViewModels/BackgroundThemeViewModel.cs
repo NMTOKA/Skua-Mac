@@ -77,7 +77,7 @@ public class BackgroundThemeViewModel : ObservableObject
     {
         try
         {
-            System.Diagnostics.Process.Start("explorer.exe", ClientFileSources.SkuaThemesDIR);
+            Skua.Core.Utils.Link.OpenFolder(ClientFileSources.SkuaThemesDIR);
         }
         catch (Exception)
         {

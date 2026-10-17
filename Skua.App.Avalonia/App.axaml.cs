@@ -296,6 +296,38 @@ public partial class App : Application
             e.SetObserved();
         };
 
+        // Without this, any exception thrown by a button or menu command ends the main loop and closes the app.
+        // Log it and tell the user instead; the failed action is abandoned but the client keeps running.
+        Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            e.Handled = true;
+            Exception ex = e.Exception;
+            System.Diagnostics.Trace.WriteLine($"Dispatcher.UnhandledException: {ex}");
+            try
+            {
+                System.IO.File.AppendAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "crash.txt"),
+                    $"[{DateTime.Now:u}] Handled UI exception\r\n{ex}\r\n\r\n");
+            }
+            catch { }
+
+            if (Interlocked.Exchange(ref _exceptionDialogShown, 1) == 1)
+                return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    Ioc.Default.GetService<IDialogService>()?.ShowMessageBox(
+                        $"That action failed:\r\n{ex.GetType().Name}: {ex.Message}\r\n\r\nDetails were saved to crash.txt.",
+                        "Something went wrong");
+                }
+                catch { }
+                finally
+                {
+                    Interlocked.Exchange(ref _exceptionDialogShown, 0);
+                }
+            });
+        };
+
     }
 
     private static void ShowUnhandledException(string source, Exception ex)

@@ -19,4 +19,13 @@ public class Link
         };
         Process.Start(ps);
     }
+
+    /// <summary>Opens a folder in the platform file manager (Explorer, Finder, or the Linux default).</summary>
+    public static void OpenFolder(string path)
+    {
+        string opener = OperatingSystem.IsWindows() ? "explorer.exe" : OperatingSystem.IsMacOS() ? "open" : "xdg-open";
+        ProcessStartInfo ps = new(opener) { UseShellExecute = false };
+        ps.ArgumentList.Add(path);
+        Process.Start(ps)?.Dispose();
+    }
 }
