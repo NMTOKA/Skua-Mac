@@ -129,6 +129,7 @@ app.on('ready', () => {
 function registerControlHandlers(win) {
   ipcMain.handle('__show', () => { win.show(); return 'true'; });
   ipcMain.handle('__hide', () => { win.hide(); return 'true'; });
+  ipcMain.handle('__focus', () => { win.show(); app.focus({ steal: true }); win.focus(); return 'true'; });
   ipcMain.handle('__setTitle', (_e, text) => { win.setTitle(String(text)); return 'true'; });
   ipcMain.handle('__screenshot', async () => {
     const image = await win.webContents.capturePage();

@@ -79,7 +79,11 @@ public class FlashUtil : IFlashUtil
         _listener = new HttpListener();
         _listener.Prefixes.Add($"http://127.0.0.1:{port}/");
         _listener.Start();
-        _ = AcceptLoop(_listener, _cts.Token);
+        // Run the socket loops on the thread pool. Started from the UI thread, their awaits would resume
+        // there, and a UI-thread Call() blocking on a reply would deadlock until its timeout.
+        HttpListener listener = _listener;
+        CancellationToken token = _cts.Token;
+        Task.Run(() => AcceptLoop(listener, token));
 
         _host = StartHost(port, swfPath);
     }
@@ -174,7 +178,7 @@ public class FlashUtil : IFlashUtil
             HttpListenerContext ctx;
             try
             {
-                ctx = await listener.GetContextAsync();
+                ctx = await listener.GetContextAsync().ConfigureAwait(false);
             }
             catch
             {
@@ -188,9 +192,9 @@ public class FlashUtil : IFlashUtil
                 continue;
             }
 
-            HttpListenerWebSocketContext wsCtx = await ctx.AcceptWebSocketAsync(null);
+            HttpListenerWebSocketContext wsCtx = await ctx.AcceptWebSocketAsync(null).ConfigureAwait(false);
             _socket = wsCtx.WebSocket;
-            _ = ReceiveLoop(wsCtx.WebSocket, token);
+            _ = Task.Run(() => ReceiveLoop(wsCtx.WebSocket, token));
         }
     }
 
@@ -202,7 +206,7 @@ public class FlashUtil : IFlashUtil
         {
             while (socket.State == WebSocketState.Open && !token.IsCancellationRequested)
             {
-                WebSocketReceiveResult result = await socket.ReceiveAsync(buffer, token);
+                WebSocketReceiveResult result = await socket.ReceiveAsync(buffer, token).ConfigureAwait(false);
                 if (result.MessageType == WebSocketMessageType.Close)
                     break;
 
@@ -398,6 +402,12 @@ public class FlashUtil : IFlashUtil
     public void SetHostVisible(bool visible)
     {
         Task.Run(() => Call(visible ? "__show" : "__hide"));
+    }
+
+    /// <summary>Shows the game window and brings it to the front.</summary>
+    public void FocusHost()
+    {
+        Task.Run(() => Call("__focus"));
     }
 
     public void SetHostTitle(string title)

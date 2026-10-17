@@ -1,5 +1,9 @@
 using Avalonia.Controls;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Platform;
+using CommunityToolkit.Mvvm.DependencyInjection;
+using Skua.Core.Interfaces;
 using System;
 
 namespace Skua.App.Avalonia.Controls;
@@ -79,9 +83,50 @@ public class WinFormsFlashHost : NativeControlHost
     }
 }
 #else
-public class WinFormsFlashHost : NativeControlHost
+/// <summary>
+/// Off Windows the game runs in the separate Skua.FlashHost window, so this area shows a pointer to it
+/// instead of an embedded (and otherwise empty, black) native view.
+/// </summary>
+public class WinFormsFlashHost : ContentControl
 {
-    // The game runs in the separate Skua.FlashHost window off Windows; nothing to scale here.
+    public WinFormsFlashHost()
+    {
+        Button show = new()
+        {
+            Content = "Show game window",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        show.Click += (_, _) =>
+        {
+            if (Ioc.Default.GetService<IFlashUtil>() is Skua.App.Avalonia.Flash.FlashUtil flash)
+                flash.FocusHost();
+        };
+
+        Content = new StackPanel
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 10,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "The game is running in its own window",
+                    FontSize = 18,
+                    FontWeight = FontWeight.SemiBold,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                },
+                new TextBlock
+                {
+                    Text = "Use the menus above for scripts, options and tools.",
+                    Opacity = 0.7,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                },
+                show,
+            }
+        };
+    }
+
     public void SetScaleMode(bool isExactFit = false) { }
 }
 #endif
