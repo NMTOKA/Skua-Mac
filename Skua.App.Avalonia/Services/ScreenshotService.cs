@@ -59,8 +59,9 @@ public class ScreenshotService : IScreenshotService
             }
         });
 #else
-        // TODO(macOS): capture the FlashHost window (e.g. via webContents.capturePage).
-        return await Task.FromResult(Array.Empty<byte>());
+        if (CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetService<Skua.Core.Interfaces.IFlashUtil>() is Skua.App.Avalonia.Flash.FlashUtil flash)
+            return await flash.CaptureHostAsync();
+        return Array.Empty<byte>();
 #endif
     }
 }

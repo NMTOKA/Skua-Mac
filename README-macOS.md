@@ -1,16 +1,22 @@
 # VibeSkua on macOS
 
-Status: **experimental**. The client UI builds and launches on Apple Silicon. The game runs in a separate
-Electron 8 + PepperFlash window (`Skua.FlashHost`), bridged to the client over a local WebSocket.
+Status: **experimental, working**. The client runs natively on Apple Silicon. The game runs in a separate
+window (`Skua.FlashHost`: Electron 8 + PepperFlash) that talks to the client over a local WebSocket.
+Tested on macOS 27: the game loads to the login screen, and calls and events flow both ways.
+
+> **macOS 28 warning:** macOS 27 shows *"This version of Electron includes a component that will not open in
+> macOS 28."* PepperFlash and Electron 8 are Intel-only and run through Rosetta. Expect this game host to
+> stop working on the next major macOS release unless a native backend (e.g. Ruffle) replaces it.
 
 ## Requirements
 
-- **.NET 10 SDK** (`dotnet-install.sh --channel 10.0`, or the official installer)
-- **Node.js** (to install the Electron host)
-- **Rosetta 2**, because PepperFlash is Intel-only: `softwareupdate --install-rosetta`
+- **.NET 10 SDK**. The official installer, or `dotnet-install.sh --channel 10.0` into `~/.dotnet`
+  (then `export DOTNET_ROOT=$HOME/.dotnet`).
+- **Node.js**, to install the Electron host.
+- **Rosetta 2**: `softwareupdate --install-rosetta --agree-to-license`
 - **Artix Game Launcher** in `/Applications`. Its `PepperFlashPlayer.plugin` is used at runtime and is not
   redistributed here. Override the path with `SKUA_PPAPI=/path/to/PepperFlashPlayer.plugin`.
-- Java (optional, only for map item parsing via FFDec)
+- Java (optional, only for map item parsing via FFDec).
 
 ## Build and run
 
@@ -20,19 +26,27 @@ dotnet build Skua.App.Avalonia/Skua.App.Avalonia.csproj
 cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 ```
 
-If .NET is installed in your home folder, export `DOTNET_ROOT=$HOME/.dotnet` first.
+The client window opens first, then the game window. Log in from the game window.
 
 ## How it differs from Windows
 
 | Area | Windows | macOS |
 |---|---|---|
-| Game | ActiveX Flash embedded in the window | Separate `Skua.FlashHost` window (Electron 8, Rosetta) |
-| Multi-account | Tabbed host re-parents child windows (Win32) | One client per window; launch more instances instead |
-| Global hotkeys | Win32 | Only while a Skua window has focus |
-| Screenshots | GDI capture | Not implemented yet |
+| Game | ActiveX Flash embedded in the client window | Separate game window (Electron 8 under Rosetta) |
+| Multi-account | Tabbed host window | Run VibeSkua again: each instance gets its own game window and profile |
+| Headless mode | 1x1 viewport | Hides the game window; the game keeps running |
+| Hotkeys | Global (Win32) | Work while the client **or** its game window has focus |
+| Screenshots (Discord) | GDI capture | Captured from the game window |
+| Game window closed/crashed | n/a | Client asks whether to reopen it |
 | Auto-update | Velopack | Not set up |
+
+## Where things live
+
+- Game profiles (Flash settings, saved logins): `~/Library/Application Support/skua-flashhost/instances/<n>`.
+  Instance 1 is reused by the first running client, instance 2 by the second, and so on.
+- Bridge code: `Skua.App.Avalonia/Flash/FlashUtil.Unix.cs` (C#) and `Skua.FlashHost/host.html` (JS).
 
 ## Not yet verified
 
-The Flash host and bridge haven't been tested end to end yet (they need Rosetta). Expect fixes after the
-first real run.
+- Running a full bot script while logged in
+- Hotkeys pressed inside the game window (forwarding is implemented but untested)

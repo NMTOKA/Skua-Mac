@@ -8,7 +8,7 @@
 //
 // PepperFlash is x86_64-only, so this runs as Electron 8 (x64) under Rosetta 2.
 
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -40,6 +40,27 @@ if (!fs.existsSync(swfPath)) {
   console.error(`flashhost: skua.swf not found at ${swfPath}`);
   app.exit(4);
 }
+
+// One Chromium profile per running client (a profile is locked by the host using it). Slots are reused
+// across launches so the game's saved settings stick: the first slot whose owner process is gone wins.
+function claimProfileSlot() {
+  const root = path.join(app.getPath('appData'), 'skua-flashhost', 'instances');
+  for (let slot = 1; ; slot++) {
+    const dir = path.join(root, String(slot));
+    const pidFile = path.join(dir, 'host.pid');
+    try {
+      const owner = parseInt(fs.readFileSync(pidFile, 'utf8'), 10);
+      if (owner && owner !== process.pid) {
+        process.kill(owner, 0); // throws if the process is gone
+        continue;
+      }
+    } catch (e) { /* missing file or dead owner: free */ }
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(pidFile, String(process.pid));
+    return dir;
+  }
+}
+app.setPath('userData', claimProfileSlot());
 
 app.commandLine.appendSwitch('ppapi-flash-path', ppapiPath);
 app.commandLine.appendSwitch('ppapi-flash-version', PPAPI_VERSION);
@@ -90,8 +111,11 @@ app.on('ready', () => {
       nodeIntegration: false,
       contextIsolation: false,
       backgroundThrottling: false,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
+  registerControlHandlers(win);
+  forwardHotkeys(win);
   win.on('page-title-updated', e => e.preventDefault());
   win.webContents.on('console-message', (_e, _level, message) => console.log(`[page] ${message}`));
   win.webContents.on('plugin-crashed', (_e, name, version) => {
@@ -100,5 +124,26 @@ app.on('ready', () => {
   });
   win.loadFile(pagePath);
 });
+
+// Control calls from .NET (see FlashUtil.Unix.cs), routed through host.html.
+function registerControlHandlers(win) {
+  ipcMain.handle('__show', () => { win.show(); return 'true'; });
+  ipcMain.handle('__hide', () => { win.hide(); return 'true'; });
+  ipcMain.handle('__setTitle', (_e, text) => { win.setTitle(String(text)); return 'true'; });
+  ipcMain.handle('__screenshot', async () => {
+    const image = await win.webContents.capturePage();
+    return image.toPNG().toString('base64');
+  });
+}
+
+// Flash swallows keyboard input inside the plugin, so read keys at the browser level and pass them on
+// for VibeSkua's hotkeys. The key still reaches the game.
+function forwardHotkeys(win) {
+  win.webContents.on('before-input-event', (_e, input) => {
+    if (input.type !== 'keyDown' || input.isAutoRepeat || !input.code) return;
+    const mods = (input.control || input.meta ? 'c' : '') + (input.shift ? 's' : '') + (input.alt ? 'a' : '');
+    win.webContents.send('skua-key', `${input.code}|${mods}`);
+  });
+}
 
 app.on('window-all-closed', () => app.quit());

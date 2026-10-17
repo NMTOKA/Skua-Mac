@@ -50,6 +50,12 @@
     var req;
     try { req = JSON.parse(msg.data); } catch (e) { return; }
     var reply = { id: req.id, ok: true, r: null };
+    if (req.fn && req.fn.indexOf('__') === 0) {
+      window.skuaHost.invoke(req.fn, req.args).then(
+        function (r) { reply.r = (r === undefined) ? null : r; send(reply); },
+        function (e) { reply.ok = false; reply.err = String(e && e.message || e); send(reply); });
+      return;
+    }
     try {
       var fn = flash[req.fn];
       if (typeof fn !== 'function') throw new Error('not a Flash callback: ' + req.fn);
@@ -61,6 +67,8 @@
     }
     send(reply);
   };
+
+  window.skuaHost.onKey(function (spec) { send({ ev: '__key', a: spec }); });
 
   // Names skua.swf calls via ExternalInterface.call.
   ['requestLoadGame', 'debug', 'loaded', 'pext', 'openWebsite', 'packet', 'packetFromServer']

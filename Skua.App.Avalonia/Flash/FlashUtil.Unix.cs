@@ -51,6 +51,14 @@ public class FlashUtil : IFlashUtil
 
     public event FlashCallHandler? FlashCall;
 
+    /// <summary>Raised when the game window process exits on its own (closed by the user or crashed).</summary>
+    public event Action? HostExited;
+
+    /// <summary>FlashCall name the host uses to forward key presses from the game window.</summary>
+    public const string HostKeyEvent = "__key";
+
+    private bool _cleaningUp;
+
     // The Windows build caches the SWF bytes in RAM; the host loads it from disk here.
     public static void PreloadSwf() { }
 
@@ -136,7 +144,18 @@ public class FlashUtil : IFlashUtil
         Process p = new() { StartInfo = psi, EnableRaisingEvents = true };
         p.OutputDataReceived += (_, e) => { if (e.Data is not null) Trace.WriteLine($"[FlashHost] {e.Data}"); };
         p.ErrorDataReceived += (_, e) => { if (e.Data is not null) Trace.WriteLine($"[FlashHost] {e.Data}"); };
-        p.Exited += (_, _) => Trace.WriteLine($"[FlashHost] exited with code {SafeExitCode(p)}");
+        p.Exited += (_, _) =>
+        {
+            Trace.WriteLine($"[FlashHost] exited with code {SafeExitCode(p)}");
+            if (_cleaningUp || !ReferenceEquals(p, _host))
+                return;
+
+            _socket = null;
+            foreach (var tcs in _pending.Values)
+                tcs.TrySetCanceled();
+            _pending.Clear();
+            HostExited?.Invoke();
+        };
         p.Start();
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
@@ -375,7 +394,50 @@ public class FlashUtil : IFlashUtil
         return new FlashObject<T>(Call<int>("lnkCreate", path), this);
     }
 
+    /// <summary>Shows or hides the game window (headless mode). The game keeps running while hidden.</summary>
+    public void SetHostVisible(bool visible)
+    {
+        Task.Run(() => Call(visible ? "__show" : "__hide"));
+    }
+
+    public void SetHostTitle(string title)
+    {
+        Task.Run(() => Call("__setTitle", title));
+    }
+
+    /// <summary>PNG bytes of the game window, or empty if the host is not running.</summary>
+    public Task<byte[]> CaptureHostAsync()
+    {
+        return Task.Run(() =>
+        {
+            string? base64 = Call("__screenshot");
+            if (string.IsNullOrEmpty(base64))
+                return Array.Empty<byte>();
+            try
+            {
+                return Convert.FromBase64String(base64);
+            }
+            catch (FormatException)
+            {
+                return Array.Empty<byte>();
+            }
+        });
+    }
+
     private void CleanupOldHost()
+    {
+        _cleaningUp = true;
+        try
+        {
+            CleanupOldHostCore();
+        }
+        finally
+        {
+            _cleaningUp = false;
+        }
+    }
+
+    private void CleanupOldHostCore()
     {
         _cts?.Cancel();
         _cts = null;

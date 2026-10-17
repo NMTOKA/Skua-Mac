@@ -265,6 +265,9 @@ public partial class MainWindow : Window
                         bool isHeadless = _options.HeadlessMode;
                         if (HeadlessOverlay != null) HeadlessOverlay.IsVisible = isHeadless;
                         if (FlashHost != null) FlashHost.IsVisible = !isHeadless && _isFlashLoaded;
+#if !IS_WINDOWS
+                        ApplyExternalHeadless(isHeadless);
+#endif
                     });
                 }
             };
@@ -284,10 +287,13 @@ public partial class MainWindow : Window
         }
         catch { }
         
+        _flash.InitializeFlash();
+#if !IS_WINDOWS
+        AttachExternalGameHost();
+#endif
+
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) 
         {
-            _flash.InitializeFlash();
-            
 #if IS_WINDOWS
             if (this.TryGetPlatformHandle()?.Handle is IntPtr hwnd && hwnd != IntPtr.Zero)
             {

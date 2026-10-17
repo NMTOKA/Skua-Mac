@@ -222,19 +222,29 @@ public class HotKeyService : IHotKeyService, IDisposable
 
     private void MainWindowOnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (_bindings.Count == 0)
-            return;
+        if (HandleKey(e.Key, e.KeyModifiers))
+            e.Handled = true;
+    }
 
-        KeyModifiers modifiers = e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Shift);
+    /// <summary>
+    /// Runs the hotkey bound to <paramref name="key"/>, if any. Also used for keys pressed in the
+    /// external game window on macOS, which is a separate process.
+    /// </summary>
+    public bool HandleKey(Key key, KeyModifiers keyModifiers)
+    {
+        if (_bindings.Count == 0)
+            return false;
+
+        KeyModifiers modifiers = keyModifiers & (KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Shift);
         foreach (HotKeyBinding binding in _bindings)
         {
-            if (!IsKeyMatch(binding.Key, e.Key) || binding.Modifiers != modifiers)
+            if (!IsKeyMatch(binding.Key, key) || binding.Modifiers != modifiers)
                 continue;
 
-            if (ExecuteBinding(binding))
-                e.Handled = true;
-            return;
+            return ExecuteBinding(binding);
         }
+
+        return false;
     }
 
     private static bool IsKeyMatch(Key bindingKey, Key eventKey)
