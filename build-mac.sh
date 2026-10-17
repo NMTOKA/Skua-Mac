@@ -77,6 +77,12 @@ xattr -cr "$APP"
 codesign --force --deep --sign - "$APP"
 codesign --verify --deep "$APP"
 
-rm -rf "$OUT/VibeSkua.app"
+if pgrep -f "$OUT/VibeSkua.*\.app/Contents/MacOS/VibeSkua\$" >/dev/null; then
+  echo "error: VibeSkua is running from $OUT. Quit it and run this again." >&2
+  exit 1
+fi
+# iCloud Drive keeps a replaced bundle as a conflict copy ("VibeSkua 2.app"); drop those so only the
+# current build is left to open.
+rm -rf "$OUT/VibeSkua.app" "$OUT"/VibeSkua\ [0-9]*.app
 ditto "$APP" "$OUT/VibeSkua.app"
 echo "==> Done: $OUT/VibeSkua.app ($(du -sh "$OUT/VibeSkua.app" | cut -f1))"
