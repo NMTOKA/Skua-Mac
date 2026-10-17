@@ -18,15 +18,24 @@ Tested on macOS 27: the game loads to the login screen, and calls and events flo
   redistributed here. Override the path with `SKUA_PPAPI=/path/to/PepperFlashPlayer.plugin`.
 - Java (optional, only for map item parsing via FFDec).
 
-## Build and run
+## Build the app
+
+```bash
+./build-mac.sh
+```
+
+This produces `Build/macOS/VibeSkua.app` (self-contained, about 320 MB, ad-hoc signed). Double-click it, or
+drag it to `/Applications`. The client window opens first, then the game window. Log in from the game window.
+On first launch macOS may ask to let VibeSkua find devices on the local network. The client and the game
+window talk over a local connection.
+
+## Development build
 
 ```bash
 cd Skua.FlashHost && npm_config_arch=x64 npm install && cd ..
 dotnet build Skua.App.Avalonia/Skua.App.Avalonia.csproj
 cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 ```
-
-The client window opens first, then the game window. Log in from the game window.
 
 ## How it differs from Windows
 
@@ -38,6 +47,7 @@ The client window opens first, then the game window. Log in from the game window
 | Hotkeys | Global (Win32) | Work while the client **or** its game window has focus |
 | Screenshots (Discord) | GDI capture | Captured from the game window |
 | Game window closed/crashed | n/a | Client asks whether to reopen it |
+| Sound alerts | Tone beeps | System alert sound |
 | Auto-update | Velopack | Not set up |
 
 ## Where things live
