@@ -15,7 +15,15 @@
 
 Each Skua Mac window is its own bot with its own game window. To add another, open the **Skua Mac** menu at the top of the screen and choose **New Skua Window**, or press **⌘N**. New windows open slightly offset so they don't cover each other.
 
-The Windows "army" tab host, which starts and stops scripts on every bot at once, isn't available on Mac yet. For now, set up and start each window's script on its own.
+To control all your bots at once, use the **Army** menu in any Skua Mac window. It works on every Skua Mac window that's open:
+
+- **Start scripts / Stop scripts on all windows**
+- **Load a script on all windows...**: pick a script once and every window loads it
+- **Log in / Log out all windows**: logins are spaced 2 seconds apart
+- **Send all to map... / Send all to player...**
+- **Lag Killer**, **Hide the game (headless)** and **Hide other players**: switch them on or off everywhere
+
+The top line of the menu shows how many Skua Mac windows are running, and after each click it shows how many windows got it. The army hotkeys (Options > HotKeys) do the same things.
 
 ## If something goes wrong
 
@@ -31,7 +39,7 @@ Want to build it yourself or see how it works? See [README-macOS.md](README-macO
 
 **Running the game.** VibeSkua shows the game through Windows' ActiveX Flash control, which doesn't exist on macOS. Skua Mac runs the game in a small Electron window with PepperFlash, the same setup the official Artix Game Launcher uses on Mac (its Flash player is borrowed from your launcher install). A local bridge (`FlashUtil.Unix.cs` + `Skua.FlashHost`) connects the bot to the game and matches the Windows behaviour exactly, so scripts and the bot core don't need changes. Each game call takes about 0.4 ms.
 
-**One window.** The Skua Mac bar shrinks to its title and menus, and the game window docks underneath it and moves, resizes and minimizes with it. Headless mode hides the game, hotkeys work from either window, Discord screenshots come from the game window, and a closed or crashed game window can be reopened. For multiple accounts, open the app again; each copy gets its own game profile.
+**One window.** The Skua Mac bar shrinks to its title and menus, and the game window docks underneath it and moves, resizes and minimizes with it. Headless mode hides the game, hotkeys work from either window, Discord screenshots come from the game window, and a closed or crashed game window can be reopened. For multiple accounts, open the app again; each copy gets its own game profile, and the Army menu controls them all (each copy listens on a private local socket instead of the Windows window messages).
 
 **Scripts.** Community scripts use Windows-only pieces, so two compatibility fixes were added. A small stand-in for Windows Forms (`Skua.Compat.WinForms`) lets `CoreBots.cs` compile. On macOS, CoreBots' "requires Windows 10" check is reworded before compiling so it no longer stops every script. Script files themselves are never edited.
 

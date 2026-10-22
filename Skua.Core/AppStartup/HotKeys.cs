@@ -537,6 +537,12 @@ public class HotKeys
 
     private static void ArmyLoadScriptAllLocal()
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            _ = ArmyChannel.PickAndLoadScriptOnAll();
+            return;
+        }
+
         if (IsHostProcess)
         {
             try
@@ -578,9 +584,12 @@ public class HotKeys
     private static void BroadcastArmyMessage(uint msg, int wParam, int lParam)
     {
         // Army messages are Win32 window messages to the other clients of the Windows tab host. Off Windows
-        // each client runs alone; the local option has already been toggled by the caller.
+        // each client is its own process and they go over the army channel instead.
         if (!OperatingSystem.IsWindows())
+        {
+            ArmyChannel.Broadcast(msg, wParam, lParam);
             return;
+        }
 
         var skuaProcesses = System.Diagnostics.Process.GetProcessesByName(System.Diagnostics.Process.GetCurrentProcess().ProcessName);
         var pids = skuaProcesses.Select(p => p.Id).ToHashSet();

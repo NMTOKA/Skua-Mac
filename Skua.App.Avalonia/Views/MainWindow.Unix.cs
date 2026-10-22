@@ -7,8 +7,11 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Skua.App.Avalonia.Flash;
 using Skua.App.Avalonia.Services;
+using Skua.Core.AppStartup;
 using Skua.Core.Interfaces;
+using Skua.Shared.Avalonia.ViewModels.Dialogs;
 using System;
+using System.Threading.Tasks;
 
 namespace Skua.App.Avalonia.Views;
 
@@ -26,6 +29,8 @@ public partial class MainWindow
 
         _flash.FlashCall += OnExternalHostCall;
         host.HostExited += OnHostExited;
+        ArmyChannel.Listen(OnArmyCommand);
+        Closed += (_, _) => ArmyChannel.Stop();
 
         // SKUA_FPS_OVERLAY=1 shows Avalonia's frame-rate overlay (diagnosing redraws that waste CPU).
         string? overlay = Environment.GetEnvironmentVariable("SKUA_FPS_OVERLAY");
@@ -159,6 +164,123 @@ public partial class MainWindow
             if (reopen == true)
                 _flash.InitializeFlash();
         });
+    }
+
+    /// <summary>An army action from another Skua Mac window (or the Army menu of this one).</summary>
+    private Task<int> OnArmyCommand(ArmyChannel.Command command)
+    {
+        return Dispatcher.UIThread.InvokeAsync(() =>
+            HandleArmyMessage(command.Msg, new IntPtr(command.W), new IntPtr(command.L), command.Data)?.ToInt32() ?? -1).GetTask();
+    }
+
+    private MenuItem? _armyStatus;
+    private MenuItem? _armyLagKiller, _armyHeadless, _armyHidePlayers;
+
+    /// <summary>
+    /// The Army menu: what the Windows tab host's army controls do, for every running Skua Mac window.
+    /// </summary>
+    private MenuItem CreateArmyMenu()
+    {
+        _armyStatus = new MenuItem { IsEnabled = false };
+        _armyLagKiller = ArmyToggle(ArmyChannel.OptionLagKiller, () => _options.LagKiller);
+        _armyHeadless = ArmyToggle(ArmyChannel.OptionHeadless, () => _options.HeadlessMode);
+        _armyHidePlayers = ArmyToggle(ArmyChannel.OptionHidePlayers, () => _options.HidePlayers);
+
+        MenuItem army = new() { Header = "Army" };
+        army.Classes.Add("top-nav-item");
+        army.Items.Add(_armyStatus);
+        army.Items.Add(new Separator());
+        army.Items.Add(ArmyItem("Start scripts on all windows", () =>
+            ArmyChannel.BroadcastAsync(ArmyChannel.SetOptionMessage, ArmyChannel.OptionScript, 1)));
+        army.Items.Add(ArmyItem("Stop scripts on all windows", () =>
+            ArmyChannel.BroadcastAsync(ArmyChannel.SetOptionMessage, ArmyChannel.OptionScript, 0)));
+        army.Items.Add(ArmyItem("Load a script on all windows...", ArmyChannel.PickAndLoadScriptOnAll));
+        army.Items.Add(new Separator());
+        army.Items.Add(ArmyItem("Log in all windows", () =>
+            ArmyChannel.BroadcastAsync(ArmyChannel.LoginMessage, delayBetween: TimeSpan.FromSeconds(2))));
+        army.Items.Add(ArmyItem("Log out all windows", () => ArmyChannel.BroadcastAsync(ArmyChannel.LogoutMessage)));
+        army.Items.Add(ArmyItem("Send all to map...", () =>
+        {
+            string? target = AskArmyTarget("Send Army to Map", "Map and cell (map,cell):", "e.g. yulgar-1,Enter");
+            if (target is null)
+                return null;
+            string[] parts = target.Split(',', 2);
+            string cell = parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1]) ? parts[1].Trim() : "Enter";
+            return ArmyChannel.BroadcastAsync(ArmyChannel.JumpMapMessage, data: $"{parts[0].Trim()}\n{cell}");
+        }));
+        army.Items.Add(ArmyItem("Send all to player...", () =>
+        {
+            string? target = AskArmyTarget("Send Army to Player", "Player name:", "e.g. Artix");
+            return target is null ? null : ArmyChannel.BroadcastAsync(ArmyChannel.JumpPlayerMessage, data: target);
+        }));
+        army.Items.Add(new Separator());
+        army.Items.Add(_armyLagKiller);
+        army.Items.Add(_armyHeadless);
+        army.Items.Add(_armyHidePlayers);
+        army.Items.Add(new Separator());
+        army.Items.Add(ArmyItem("New Skua Window", () =>
+        {
+            MacInstances.LaunchNewInstance();
+            return null;
+        }));
+
+        army.SubmenuOpened += (_, _) => RefreshArmyMenu();
+        RefreshArmyMenu();
+        return army;
+    }
+
+    private void RefreshArmyMenu()
+    {
+        int count = ArmyChannel.Instances().Count;
+        if (_armyStatus is not null)
+            _armyStatus.Header = count == 1 ? "1 Skua Mac window running" : $"{count} Skua Mac windows running";
+        // Each toggle says what clicking it does, based on this window's setting.
+        if (_armyLagKiller is not null)
+            _armyLagKiller.Header = $"Turn Lag Killer {(_options.LagKiller ? "off" : "on")} on all windows";
+        if (_armyHeadless is not null)
+            _armyHeadless.Header = _options.HeadlessMode ? "Show the game on all windows" : "Hide the game (headless) on all windows";
+        if (_armyHidePlayers is not null)
+            _armyHidePlayers.Header = $"{(_options.HidePlayers ? "Show" : "Hide")} other players on all windows";
+    }
+
+    /// <summary>A menu item that runs <paramref name="send"/> and shows how many windows it reached.</summary>
+    private MenuItem ArmyItem(string header, Func<Task<int>?> send)
+    {
+        MenuItem item = new() { Header = header };
+        item.Click += async (_, _) =>
+        {
+            try
+            {
+                Task<int>? sending = send();
+                if (sending is null)
+                    return;
+                if (_armyStatus is not null)
+                    _armyStatus.Header = "Sending...";
+                int reached = await sending;
+                if (_armyStatus is not null)
+                    _armyStatus.Header = reached == 1 ? "Last action reached 1 window" : $"Last action reached {reached} windows";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"Army: {header} failed: {ex.Message}");
+            }
+        };
+        return item;
+    }
+
+    /// <summary>An option switch: sets the opposite of this window's setting on every window.</summary>
+    private MenuItem ArmyToggle(int optionId, Func<bool> isOn)
+    {
+        return ArmyItem(string.Empty, () => ArmyChannel.BroadcastAsync(ArmyChannel.SetOptionMessage, optionId, isOn() ? 0 : 1));
+    }
+
+    private static string? AskArmyTarget(string title, string message, string example)
+    {
+        InputDialogViewModel vm = new(title, message, example, false);
+        if (Ioc.Default.GetRequiredService<IDialogService>().ShowDialog(vm) != true)
+            return null;
+        string text = vm.DialogTextInput?.Trim() ?? "";
+        return text.Length > 0 ? text : null;
     }
 
     /// <summary>

@@ -48,7 +48,7 @@ cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 | Area | Windows | macOS |
 |---|---|---|
 | Game | ActiveX Flash embedded in the client window | Game window docked under the client's menu bar (Electron 8 under Rosetta) |
-| Multi-account | Tabbed host window with army controls | Skua Mac menu > New Skua Window (⌘N): each window is its own bot with its own game profile. No army controls yet |
+| Multi-account | Tabbed host window with army controls | Skua Mac menu > New Skua Window (⌘N): each window is its own bot with its own game profile. The **Army** menu in any window controls all of them |
 | Headless mode | 1x1 viewport | Hides the game window; the game keeps running |
 | Hotkeys | Global (Win32) | Work while the client **or** its game window has focus |
 | Screenshots (Discord) | GDI capture | Captured from the game window |
@@ -62,6 +62,16 @@ cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 - `SKUA_FPS_OVERLAY=1` (frame rate) or `SKUA_FPS_OVERLAY=dirty` (redrawn regions): Avalonia render overlays.
 - `SKUA_RENDER=gl`: use Avalonia's OpenGL renderer instead of Metal (Metal is the default and much cheaper).
 
+## Army control
+
+The Windows tab host drives its clients with `WM_SKUA_*` window messages. On macOS every Skua Mac window is its own
+process, so each one listens on a Unix domain socket, `~/Library/Application Support/VibeSkua/army/<pid>.sock`
+(folder readable only by you). The sender lists the sockets, skips and removes ones whose process has quit, and
+sends each a JSON line `{"Msg":1474,"W":99,"L":1,"Data":null}` using the same `WM_SKUA_*` numbers; the reply is one
+number (for example 1/0 for "logged in?"). Code: `Skua.Core/AppStartup/ArmyChannel.cs` (transport),
+`Skua.App.Avalonia/Views/MainWindow.Army.cs` (what each action does, shared with the Windows window procedure) and
+`MainWindow.Unix.cs` (the Army menu). The army hotkeys use the same channel.
+
 ## Where things live
 
 - Game profiles (Flash settings, saved logins): `~/Library/Application Support/skua-flashhost/instances/<n>`.
@@ -71,4 +81,5 @@ cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 ## Not yet verified
 
 - Hotkeys pressed while the game window (rather than the Skua Mac bar) has focus.
-- Army-wide controls across several Skua Mac windows (not implemented on macOS yet).
+- Army **Log in all windows**, **Send all to map/player** with logged-in accounts (start/stop scripts, load
+  script and the option switches were tested across two windows).
