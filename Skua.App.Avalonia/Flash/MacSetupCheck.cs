@@ -75,7 +75,7 @@ internal static class MacSetupCheck
     /// A downloaded app is quarantined. Once the user has opened Skua Mac, clear the flag from the bundled game
     /// window too, or macOS blocks it separately when it starts.
     /// </summary>
-    private static bool ClearQuarantine(string hostDir)
+    internal static bool ClearQuarantine(string hostDir)
     {
         try
         {

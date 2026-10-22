@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Skua Mac</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #holder, #holder > * { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div id="holder"></div>
+<script src="ruffle/ruffle.js"></script>
+<script>
+// Bridge between skua.swf (ExternalInterface, under Ruffle) and the .NET FlashUtil. Same protocol as
+// Skua.FlashHost/host.html, so the client can't tell the two hosts apart:
+//
+// .NET -> SWF:  {"id": n, "fn": "name", "args": [...]}   reply {"id": n, "ok": true, "r": value}
+// SWF -> .NET:  {"ev": "name", "a": "concatenated text"}
+(function () {
+  var port = new URLSearchParams(location.search).get('port');
+  var ws = new WebSocket('ws://127.0.0.1:' + port + '/');
+  var pending = [];
+  var flash = null;
+
+  function host(fn, args) { return window.webkit.messageHandlers.skua.postMessage({ fn: fn, args: args || [] }); }
+
+  // Ruffle logs through the console, which WKWebView doesn't show anywhere: pass warnings and errors to the client's
+  // trace output. skua.swf's QuestRequirementWiki throws every frame before login (game.ui is null); drop that.
+  var logged = 0;
+  setInterval(function () { logged = 0; }, 1000);
+  ['log', 'warn', 'error'].forEach(function (level) {
+    var original = console[level];
+    console[level] = function () {
+      var text = Array.prototype.map.call(arguments, String).join(' ').replace(/%c|(color|font-[a-z]+|background):[^;]*;?/g, '');
+      if ((level !== 'log' || /\b(WARN|ERROR)\b/.test(text)) && text.indexOf('QuestRequirementWiki') < 0 && logged++ < 20)
+        window.webkit.messageHandlers.log.postMessage(text.trim().slice(0, 1000));
+      return original.apply(console, arguments);
+    };
+  });
+  window.addEventListener('error', function (e) { console.error('page error: ' + e.message); });
+
+  function send(obj) {
+    var text = JSON.stringify(obj);
+    if (ws.readyState === 1) ws.send(text); else pending.push(text);
+  }
+
+  function flatten(v) {
+    // Windows reads XElement.Value: null/true/false are empty elements, so they add no text.
+    if (v === null || v === undefined || typeof v === 'boolean') return '';
+    if (Object.prototype.toString.call(v) === '[object Array]') return v.map(flatten).join('');
+    if (typeof v === 'object') return Object.keys(v).map(function (k) { return flatten(v[k]); }).join('');
+    return String(v);
+  }
+
+  function emit(name, rest) {
+    send({ ev: name, a: flatten(rest) });
+    return undefined;
+  }
+
+  ws.onopen = function () {
+    while (pending.length) ws.send(pending.shift());
+  };
+  ws.onclose = function () { host('__exit'); };
+  ws.onmessage = function (msg) {
+    var req;
+    try { req = JSON.parse(msg.data); } catch (e) { return; }
+    var reply = { id: req.id, ok: true, r: null };
+    if (req.fn && req.fn.indexOf('__') === 0) {
+      // Headless: like the Windows 1x1 viewport, shrink the player so Ruffle draws almost nothing.
+      if (req.fn === '__hide' && flash) { flash.style.width = '1px'; flash.style.height = '1px'; }
+      if (req.fn === '__show' && flash) { flash.style.width = ''; flash.style.height = ''; }
+      host(req.fn, req.args).then(
+        function (r) { reply.r = (r === undefined) ? null : r; send(reply); },
+        function (e) { reply.ok = false; reply.err = String(e && e.message || e); send(reply); });
+      return;
+    }
+    try {
+      var fn = flash && flash[req.fn];
+      if (typeof fn !== 'function') throw new Error('not a Flash callback: ' + req.fn);
+      var r = fn.apply(flash, req.args || []);
+      reply.r = (r === undefined) ? null : r;
+    } catch (e) {
+      reply.ok = false;
+      reply.err = String(e && e.message || e);
+    }
+    send(reply);
+  };
+
+  // Key presses for Skua Mac's hotkeys. The key still reaches the game.
+  window.addEventListener('keydown', function (e) {
+    if (e.repeat || !e.code) return;
+    var mods = (e.ctrlKey || e.metaKey ? 'c' : '') + (e.shiftKey ? 's' : '') + (e.altKey ? 'a' : '');
+    send({ ev: '__key', a: e.code + '|' + mods });
+  }, true);
+
+  // Names skua.swf calls via ExternalInterface.call.
+  ['requestLoadGame', 'debug', 'loaded', 'pext', 'openWebsite', 'packet', 'packetFromServer']
+    .forEach(function (name) { window[name] = function (rest) { return emit(name, rest); }; });
+
+  // skua.swf calls ExternalInterface.call('pre-load'). Flash Player evaluates that as `pre - load(...)`; Ruffle runs
+  // `(pre - load)(...)`, which never calls load() but does read load.valueOf() for the subtraction (then throws,
+  // which Ruffle reports to the SWF as a failed call, after the event is out).
+  window.pre = 0;
+  window.load = function () { return 0; };
+  window.load.valueOf = function () { emit('pre-load', []); return 0; };
+
+  // In the browser, Ruffle reaches TCP game servers through WebSocket proxies, one per host and port. The .NET
+  // client relays ws://127.0.0.1:<port>/sock/<host>/<port> to the real server.
+  var servers = {};
+  function addServer(h, p) { servers[h + ':' + p] = { host: h, port: p, proxyUrl: 'ws://127.0.0.1:' + port + '/sock/' + h + '/' + p }; }
+  ['sock7.aq.com', 'sock8.aq.com', 'euro.aqw.artix.com', 'asia.game.artix.com'].forEach(function (h) {
+    for (var p = 5588; p <= 5599; p++) addServer(h, p);
+  });
+
+  function start() {
+    var config = {
+      logLevel: 'warn',
+      autoplay: 'on',
+      unmuteOverlay: 'hidden',
+      splashScreen: false,
+      contextMenu: 'off',
+      letterbox: 'on',
+      scale: 'showAll',
+      quality: 'high',
+      allowScriptAccess: true,
+      allowNetworking: 'all',
+      openUrlMode: 'allow',
+      // Keep the game ticking while the window is hidden (headless mode) or covered.
+      backgroundExecutionMode: 'mainThread',
+      // game.aq.com and the other Artix sites send no CORS headers; the host app fetches for the page.
+      urlRewriteRules: [[/^https?:\/\/([a-z0-9.-]*\b(?:aq|artix|aqworlds)\.com)\//i, location.origin + '/proxy/$1/']],
+      socketProxy: Object.keys(servers).map(function (k) { return servers[k]; }),
+    };
+    window.RufflePlayer.config = config;
+    flash = window.RufflePlayer.newest().createPlayer();
+    flash.id = 'flash';
+    document.getElementById('holder').appendChild(flash);
+    window.flash = flash;
+    flash.ruffle().load(Object.assign({ url: location.origin + '/skua.swf' }, config)).catch(function (e) {
+      console.error('Ruffle could not load skua.swf: ' + e);
+    });
+  }
+
+  // Add every game server the server list names (normally the same hosts as above), then start.
+  var timeout = new Promise(function (resolve) { setTimeout(resolve, 5000); });
+  Promise.race([
+    fetch('/proxy/game.aq.com/game/api/data/servers').then(function (r) { return r.json(); }).then(function (list) {
+      list.forEach(function (s) { if (s.sIP && s.iPort) addServer(String(s.sIP), Number(s.iPort)); });
+    }),
+    timeout,
+  ]).catch(function (e) { console.warn('Server list unavailable, using the default game servers: ' + e); }).then(start);
+})();
+</script>
+</body>
+</html>

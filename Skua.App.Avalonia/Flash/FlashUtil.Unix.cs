@@ -25,11 +25,12 @@ using System.Xml.Linq;
 namespace Skua.App.Avalonia.Flash;
 
 /// <summary>
-/// macOS/Linux <see cref="IFlashUtil"/>. The game runs in Skua.FlashHost (Electron 8 + PepperFlash) in its own
-/// window; calls and ExternalInterface events travel as JSON over a WebSocket on 127.0.0.1.
-/// Return values and event arguments follow the same rules as the Windows ActiveX implementation.
+/// macOS/Linux <see cref="IFlashUtil"/>. The game runs in Skua.FlashHost (Electron 8 + PepperFlash) or, with
+/// <see cref="UseRuffle"/>, in Skua.RuffleHost, in its own window; calls and ExternalInterface events travel as JSON
+/// over a WebSocket on 127.0.0.1. Return values and event arguments follow the same rules as the Windows ActiveX
+/// implementation.
 /// </summary>
-public class FlashUtil : IFlashUtil
+public partial class FlashUtil : IFlashUtil
 {
     public FlashUtil(IMessenger messenger, Lazy<IScriptManager> manager)
     {
@@ -122,6 +123,9 @@ public class FlashUtil : IFlashUtil
 
     private Process? StartHost(int port, string swfPath)
     {
+        if (UseRuffle)
+            return StartRuffleHost(port, swfPath);
+
         string hostDir = FindHostDirectory();
         string electron = Environment.GetEnvironmentVariable("SKUA_ELECTRON")
             ?? Path.Combine(hostDir, "node_modules", "electron", "dist", "Electron.app", "Contents", "MacOS", "Electron");
@@ -150,6 +154,11 @@ public class FlashUtil : IFlashUtil
         if (!string.IsNullOrEmpty(ppapi))
             psi.ArgumentList.Add($"--ppapi={ppapi}");
 
+        return LaunchHost(psi);
+    }
+
+    private Process LaunchHost(ProcessStartInfo psi)
+    {
         Process p = new() { StartInfo = psi, EnableRaisingEvents = true };
         p.OutputDataReceived += (_, e) => { if (e.Data is not null) Trace.WriteLine($"[FlashHost] {e.Data}"); };
         p.ErrorDataReceived += (_, e) => { if (e.Data is not null) Trace.WriteLine($"[FlashHost] {e.Data}"); };
@@ -188,6 +197,12 @@ public class FlashUtil : IFlashUtil
             catch
             {
                 return;
+            }
+
+            if (UseRuffle && IsRelayRequest(ctx))
+            {
+                _ = Task.Run(() => RelayToGameServer(ctx, token));
+                continue;
             }
 
             if (!ctx.Request.IsWebSocketRequest || _socket is { State: WebSocketState.Open })
