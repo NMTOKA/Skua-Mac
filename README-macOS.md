@@ -5,8 +5,43 @@ window (`Skua.FlashHost`: Electron 8 + PepperFlash) that talks to the client ove
 Tested on macOS 27: the game loads to the login screen, and calls and events flow both ways.
 
 > **macOS 28 warning:** macOS 27 shows *"This version of Electron includes a component that will not open in
-> macOS 28."* PepperFlash and Electron 8 are Intel-only and run through Rosetta. Expect this game host to
-> stop working on the next major macOS release unless a native backend (e.g. Ruffle) replaces it.
+> macOS 28."* PepperFlash and Electron 8 are Intel-only and run through Rosetta. The Ruffle game host (below)
+> is the replacement; it is the default from macOS 28 on.
+
+## Game engine: Flash (Electron) or Ruffle
+
+| | Flash (`Skua.FlashHost`) | Ruffle (`Skua.RuffleHost`, beta) |
+|---|---|---|
+| What runs the game | Electron 8 + PepperFlash, x64 under Rosetta | [Ruffle](https://ruffle.rs) 0.7.1 (Flash emulator, WebAssembly) in a native arm64 WKWebView |
+| Needs | Rosetta, Artix Game Launcher | nothing extra |
+| macOS 28 | won't open | works |
+
+Choose with `SKUA_GAME_ENGINE=ruffle` or `SKUA_GAME_ENGINE=flash`, or put the word in a file (no environment
+variable needed for the DMG app):
+
+```bash
+echo ruffle > ~/Library/Application\ Support/VibeSkua/game-engine
+```
+
+Without a choice, Skua Mac uses Flash up to macOS 27 and Ruffle from macOS 28 on. The bot sees no difference: both
+hosts speak the same bridge protocol.
+
+How the Ruffle host works: `SkuaRuffleHost` (`RuffleHost.swift`) is a small AppKit app with one WKWebView. It serves
+`host.html`, Ruffle and skua.swf from `skua://game/`, a fixed origin, so the game's saved settings (Ruffle keeps them
+in the page's local storage) survive restarts, and fetches `game.aq.com` for the page (`skua://game/proxy/...`),
+because Artix's servers send no CORS headers. Ruffle can't open TCP sockets in a web view, so it connects to the game
+server through `ws://127.0.0.1:<port>/sock/<host>/<port>`, which the client relays to the real server
+(`FlashUtil.Ruffle.cs`, Artix hosts only). The game keeps running at full speed while the window is hidden or covered.
+
+Known differences under Ruffle:
+- Logging in and gameplay are not tested yet. Please report what breaks.
+- The game's own "Save" username/password boxes don't stick: Ruffle allows those secure saves only for SWFs
+  served over https. Skua's account manager is unaffected.
+- `ExternalInterface.call('pre-load')` is caught through `load.valueOf` in `host.html` (Ruffle runs the call as
+  `(pre - load)(...)`, Flash as `pre - load(...)`).
+- `getGameObject` on a whole MovieClip returns null. Under Flash it throws; neither engine can serialize one.
+- Fonts the game asks the system for (Calibri, Noto Sans, ...) fall back to Ruffle's built-in font.
+- `SKUA_RUFFLE_INSPECT=1` makes the page inspectable in Safari's Develop menu.
 
 ## Requirements
 
@@ -39,6 +74,7 @@ window talk over a local connection.
 
 ```bash
 cd Skua.FlashHost && npm_config_arch=x64 npm install && cd ..
+Skua.RuffleHost/build.sh    # Ruffle game host into Skua.RuffleHost/build (needs Xcode command line tools)
 dotnet build Skua.App.Avalonia/Skua.App.Avalonia.csproj
 cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 ```
@@ -76,7 +112,8 @@ number (for example 1/0 for "logged in?"). Code: `Skua.Core/AppStartup/ArmyChann
 
 - Game profiles (Flash settings, saved logins): `~/Library/Application Support/skua-flashhost/instances/<n>`.
   Instance 1 is reused by the first running client, instance 2 by the second, and so on.
-- Bridge code: `Skua.App.Avalonia/Flash/FlashUtil.Unix.cs` (C#) and `Skua.FlashHost/host.html` (JS).
+- Bridge code: `Skua.App.Avalonia/Flash/FlashUtil.Unix.cs` (C#) and `Skua.FlashHost/host.html` (JS); Ruffle:
+  `Skua.App.Avalonia/Flash/FlashUtil.Ruffle.cs`, `Skua.RuffleHost/host.html` and `RuffleHost.swift`.
 
 ## Not yet verified
 

@@ -1,0 +1,9 @@
+{
+  "name": "skua-rufflehost",
+  "version": "1.0.0",
+  "description": "Ruffle game host for Skua Mac: runs skua.swf in Ruffle inside a native WKWebView (see RuffleHost.swift).",
+  "private": true,
+  "dependencies": {
+    "@ruffle-rs/ruffle": "0.7.1"
+  }
+}

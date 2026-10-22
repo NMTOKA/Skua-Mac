@@ -5,8 +5,8 @@
 #   ./build-mac.sh --dmg      -> also Build/macOS/Skua-Mac-<version>.dmg (what users download)
 #
 # Requires the .NET 10 SDK and Node.js. The app is self-contained (no .NET install needed to run it),
-# bundles the Electron game host, and is ad-hoc signed. PepperFlash still comes from the user's
-# Artix Game Launcher install at runtime, and Rosetta 2 must be installed.
+# bundles both game hosts, and is ad-hoc signed. The Electron host's PepperFlash still comes from the user's
+# Artix Game Launcher install at runtime and needs Rosetta 2; the Ruffle host (Skua.RuffleHost) needs neither.
 set -euo pipefail
 
 MAKE_DMG=0
@@ -45,6 +45,9 @@ mkdir -p "$HOST_DST/node_modules/electron"
 cp "$HOST_SRC/main.js" "$HOST_SRC/preload.js" "$HOST_SRC/host.html" "$HOST_SRC/package.json" "$HOST_DST/"
 # ditto keeps the Electron framework symlinks intact.
 ditto "$HOST_SRC/node_modules/electron/dist" "$HOST_DST/node_modules/electron/dist"
+
+echo "==> Bundling the Ruffle game host"
+"$ROOT/Skua.RuffleHost/build.sh" "$MACOS/RuffleHost"
 
 echo "==> Icon"
 ICONSET="$STAGE/VibeSkua.iconset"
