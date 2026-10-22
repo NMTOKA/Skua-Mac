@@ -132,6 +132,9 @@ public class FlashUtil : IFlashUtil
             return null;
         }
 
+        if (!MacSetupCheck.EnsureReady(hostDir))
+            return null;
+
         ProcessStartInfo psi = new(electron)
         {
             UseShellExecute = false,

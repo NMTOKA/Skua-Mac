@@ -1,8 +1,31 @@
 # Skua Mac
 
-**Skua Mac** is a macOS port of [VibeSkua](https://github.com/NinjaXz/VibeSkua) for Apple Silicon Macs. It runs as a native Mac app: no virtual machine, no Windows. Community scripts run unchanged, and a full script run has been tested start to finish.
+**Skua Mac** is the AQW bot client [VibeSkua](https://github.com/NinjaXz/VibeSkua), made to run natively on Apple Silicon Macs (M1 and newer). No virtual machine, no Windows, no coding.
 
-Build and setup instructions are in [README-macOS.md](README-macOS.md). The original VibeSkua README follows below.
+## Install
+
+1. **Download** the latest `Skua-Mac-….dmg` from the [Releases page](https://github.com/NMTOKA/VibeSkua/releases/latest).
+2. **Open the file** and drag **Skua Mac** onto the **Applications** folder.
+3. **Install the [Artix Game Launcher](https://www.artix.com/downloads/artixlauncher/)** if you don't have it. It's free, and Skua Mac uses its Flash player.
+4. **Open Skua Mac** from Applications. The first time, macOS will say it can't check the app because it isn't from the App Store. Click **Done**, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Skua Mac. You only do this once.
+5. If Skua Mac offers to **install Rosetta**, click **Yes**. If macOS asks to let it **find devices on your local network**, click **Allow**. Both are one-time.
+6. **Log in** in the game window under the Skua Mac bar, then use the menus on the bar (Scripts, Options, Tools…) to run the bot.
+
+## Running more than one bot
+
+Each Skua Mac window is its own bot with its own game window. To add another, open the **Skua Mac** menu at the top of the screen and choose **New Skua Window**, or press **⌘N**. New windows open slightly offset so they don't cover each other.
+
+The Windows "army" tab host, which starts and stops scripts on every bot at once, isn't available on Mac yet. For now, set up and start each window's script on its own.
+
+## If something goes wrong
+
+- **The game window never appears.** Make sure the Artix Game Launcher is in your Applications folder and that you allowed Rosetta. Then quit and reopen Skua Mac.
+- **"Skua Mac is damaged" or it won't open.** Do the Open Anyway step in Install step 4. If that option is missing, open the Terminal app and run `xattr -dr com.apple.quarantine "/Applications/Skua Mac.app"`, then try again.
+- **A button shows "Something went wrong".** The bot keeps running. Details are saved in `crash.txt` inside the app; please report it on the Issues page.
+
+> Botting is against AQW's rules. Use an alt account if you don't want to risk your main.
+
+Want to build it yourself or see how it works? See [README-macOS.md](README-macOS.md).
 
 ## What was changed to make it work on Mac
 
@@ -18,7 +41,6 @@ Build and setup instructions are in [README-macOS.md](README-macOS.md). The orig
 
 **Packaging.** `./build-mac.sh` builds a self-contained, double-clickable `Skua Mac.app`. Every push is built on both Windows and macOS by GitHub Actions, so Mac changes can't break the Windows build. Windows behaviour is otherwise unchanged.
 
-> Botting is against AQW's rules. Use an alt account if you don't want to risk your main.
 
 
 ## Credits & Acknowledgements

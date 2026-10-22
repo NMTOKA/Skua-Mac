@@ -1,4 +1,4 @@
-# VibeSkua on macOS
+# Skua Mac: building and technical notes
 
 Status: **experimental, working**. The client runs natively on Apple Silicon. The game runs in a separate
 window (`Skua.FlashHost`: Electron 8 + PepperFlash) that talks to the client over a local WebSocket.
@@ -21,8 +21,12 @@ Tested on macOS 27: the game loads to the login screen, and calls and events flo
 ## Build the app
 
 ```bash
-./build-mac.sh
+./build-mac.sh          # Build/macOS/Skua Mac.app
+./build-mac.sh --dmg    # also the downloadable Skua-Mac-<version>.dmg
 ```
+
+Users normally download the DMG from GitHub Releases instead. The **Release Skua Mac** workflow builds it on a
+GitHub Apple Silicon runner: run it by hand for a test artifact, or push a `mac-v<version>` tag to publish a release.
 
 This produces `Build/macOS/Skua Mac.app` (self-contained, about 320 MB, ad-hoc signed). Double-click it, or
 drag it to `/Applications`. The client shows as **Skua Mac** and shrinks to its title and menu bar, and the game appears directly underneath,
@@ -44,7 +48,7 @@ cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 | Area | Windows | macOS |
 |---|---|---|
 | Game | ActiveX Flash embedded in the client window | Game window docked under the client's menu bar (Electron 8 under Rosetta) |
-| Multi-account | Tabbed host window | Run VibeSkua again: each instance gets its own game window and profile |
+| Multi-account | Tabbed host window with army controls | Skua Mac menu > New Skua Window (⌘N): each window is its own bot with its own game profile. No army controls yet |
 | Headless mode | 1x1 viewport | Hides the game window; the game keeps running |
 | Hotkeys | Global (Win32) | Work while the client **or** its game window has focus |
 | Screenshots (Discord) | GDI capture | Captured from the game window |
@@ -66,5 +70,5 @@ cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 
 ## Not yet verified
 
-- Running a full bot script while logged in
-- Hotkeys pressed inside the game window (forwarding is implemented but untested)
+- Hotkeys pressed while the game window (rather than the Skua Mac bar) has focus.
+- Army-wide controls across several Skua Mac windows (not implemented on macOS yet).

@@ -2,14 +2,18 @@
 # Builds a double-clickable "Skua Mac.app" (the VibeSkua client) for Apple Silicon.
 #
 #   ./build-mac.sh            -> Build/macOS/Skua Mac.app
+#   ./build-mac.sh --dmg      -> also Build/macOS/Skua-Mac-<version>.dmg (what users download)
 #
 # Requires the .NET 10 SDK and Node.js. The app is self-contained (no .NET install needed to run it),
 # bundles the Electron game host, and is ad-hoc signed. PepperFlash still comes from the user's
 # Artix Game Launcher install at runtime, and Rosetta 2 must be installed.
 set -euo pipefail
 
+MAKE_DMG=0
+[ "${1:-}" = "--dmg" ] && MAKE_DMG=1
+
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-OUT="$ROOT/Build/macOS"
+OUT="${SKUA_OUT:-$ROOT/Build/macOS}"
 # Assemble and sign outside the repo: iCloud-synced folders (e.g. Desktop) add file attributes
 # that codesign rejects. The finished bundle is copied to $OUT at the end.
 STAGE="$(mktemp -d)"
@@ -87,3 +91,16 @@ fi
 rm -rf "$OUT/$APP_NAME.app" "$OUT/$APP_NAME "[0-9]*.app "$OUT/VibeSkua.app" "$OUT"/VibeSkua\ [0-9]*.app
 ditto "$APP" "$OUT/$APP_NAME.app"
 echo "==> Done: $OUT/$APP_NAME.app ($(du -sh "$OUT/$APP_NAME.app" | cut -f1))"
+
+if [ "$MAKE_DMG" = 1 ]; then
+  echo "==> Disk image"
+  DMG_SRC="$STAGE/dmg"
+  mkdir -p "$DMG_SRC"
+  ditto "$APP" "$DMG_SRC/$APP_NAME.app"
+  ln -s /Applications "$DMG_SRC/Applications"
+  cp "$ROOT/packaging/macos/HOW TO OPEN.txt" "$DMG_SRC/HOW TO OPEN.txt"
+  DMG="$OUT/Skua-Mac-$VERSION.dmg"
+  rm -f "$DMG"
+  hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_SRC" -ov -format UDZO "$DMG" >/dev/null
+  echo "==> Done: $DMG ($(du -sh "$DMG" | cut -f1))"
+fi

@@ -225,7 +225,13 @@ public partial class App : Application
             else if (!OperatingSystem.IsWindows())
             {
                 // The tabbed host re-parents child client windows with Win32 calls; on macOS run a single client window.
-                desktop.MainWindow = new Views.MainWindow { WindowStartupLocation = global::Avalonia.Controls.WindowStartupLocation.CenterScreen };
+                var macWindow = new Views.MainWindow { WindowStartupLocation = global::Avalonia.Controls.WindowStartupLocation.CenterScreen };
+                desktop.MainWindow = macWindow;
+#if !IS_WINDOWS
+                // More bots = more copies of the app: File menu "New Skua Window" (⌘N), staggered on screen.
+                MacInstances.AddAppMenu(this);
+                macWindow.Opened += (_, _) => MacInstances.Cascade(macWindow);
+#endif
             }
             else
             {
