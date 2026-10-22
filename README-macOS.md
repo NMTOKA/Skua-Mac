@@ -34,7 +34,7 @@ server through `ws://127.0.0.1:<port>/sock/<host>/<port>`, which the client rela
 (`FlashUtil.Ruffle.cs`, Artix hosts only). The game keeps running at full speed while the window is hidden or covered.
 
 Known differences under Ruffle:
-- Logging in and gameplay are not tested yet. Please report what breaks.
+- Logging in and playing were tested by hand on macOS 27 (Apple Silicon). Please report what breaks.
 - The game's own "Save" username/password boxes don't stick: Ruffle allows those secure saves only for SWFs
   served over https. Skua's account manager is unaffected.
 - `ExternalInterface.call('pre-load')` is caught through `load.valueOf` in `host.html` (Ruffle runs the call as
