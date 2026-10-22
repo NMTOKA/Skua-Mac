@@ -29,31 +29,20 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         OptionDictionary = GenerateDictionary().ToImmutableDictionary();
         StrongReferenceMessenger.Default.Register<ScriptOption, ScriptStoppedMessage, int>(this, (int)MessageChannels.ScriptStatus, ScriptStopped);
         StrongReferenceMessenger.Default.Register<ScriptOption, MapChangedMessage, int>(this, (int)MessageChannels.GameEvents, MapChanged);
+        StrongReferenceMessenger.Default.Register<ScriptOption, CellChangedMessage, int>(this, (int)MessageChannels.GameEvents, CellChanged);
         _isInitializing = false;
     }
 
     private void MapChanged(ScriptOption recipient, MapChangedMessage message)
     {
         if (recipient.StreamerMode)
-        {
-            Task.Run(async () => 
-            {
-                await Task.Delay(1000); // Give the Flash map UI time to load the string
-                try
-                {
-                    var rawMapName = recipient._lazyFlash.Value.GetGameObject("world.strMapName") ?? "";
-                    if (!string.IsNullOrEmpty(rawMapName) && rawMapName != "null")
-                    {
-                        var cleanMapName = rawMapName.Length > 1 
-                            ? char.ToUpper(rawMapName[0]) + rawMapName.Substring(1).ToLower() 
-                            : rawMapName.ToUpper();
-                        
-                        recipient._lazyFlash.Value.Call("setGameObject", "ui.mcInterface.areaList.title.t1.text", cleanMapName);
-                    }
-                }
-                catch { }
-            });
-        }
+            recipient.HideStreamerVisuals();
+    }
+
+    private void CellChanged(ScriptOption recipient, CellChangedMessage message)
+    {
+        if (recipient.StreamerMode)
+            recipient.HideStreamerVisuals();
     }
 
     private void ScriptStopped(ScriptOption recipient, ScriptStoppedMessage message)
@@ -209,6 +198,63 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     private bool _originalHidePlayers = false;
     private CancellationTokenSource? _streamerModeCts;
 
+    /// <summary>
+    /// Hides the name, guild, gold, coins and chat once. The game redraws them when you join a map or change cell,
+    /// so this runs on enabling Streamer Mode and after each map or cell change, not on a timer. A newer call
+    /// cancels one still waiting for the game to finish loading.
+    /// </summary>
+    private void HideStreamerVisuals()
+    {
+        _streamerModeCts?.Cancel();
+        _streamerModeCts?.Dispose();
+        _streamerModeCts = new CancellationTokenSource();
+        var token = _streamerModeCts.Token;
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                var flash = _lazyFlash.Value;
+                if (flash == null) return;
+
+                // Wait (up to 10 s) for the character to be drawn, then a moment more for the interface.
+                for (int i = 0; i < 40 && flash.IsNull("world.myAvatar.pMC"); i++)
+                    await Task.Delay(250, token);
+                await Task.Delay(500, token);
+
+                // Override visuals only, NEVER overwrite objData as it breaks shops/inventory
+                flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", "VibeSkuaUser");
+                flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", "Hidden");
+                flash.Call("setGameObject", "world.rootClass.ui.mcPortrait.strName.text", "VibeSkuaUser");
+                flash.Call("setGameObject", "world.rootClass.ui.mcPortraitTarget.strName.text", "Hidden");
+
+                // Hide Gold/Coins visually instead of wiping the client's cached integer amounts
+                flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teGold.visible", false);
+                flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teCoins.visible", false);
+                flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strGold.visible", false);
+                flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strCoins.visible", false);
+                flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtGold.visible", false);
+                flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtCoins.visible", false);
+
+                // Hide chat
+                flash.Call("setGameObject", "world.rootClass.ui.mcInterface.t1.visible", false);
+                flash.Call("setGameObject", "world.rootClass.ui.mcInterface.te.visible", false);
+
+                // Force map UI text cleanly
+                var rawMapName = flash.GetGameObject("world.strMapName") ?? "";
+                if (!string.IsNullOrEmpty(rawMapName) && rawMapName != "null")
+                {
+                    var cleanMapName = rawMapName.Length > 1
+                        ? char.ToUpper(rawMapName[0]) + rawMapName.Substring(1).ToLower()
+                        : rawMapName.ToUpper();
+
+                    flash.Call("setGameObject", "ui.mcInterface.areaList.title.t1.text", cleanMapName);
+                }
+            }
+            catch { }
+        }, token);
+    }
+
     private void ApplyStreamerMode(bool enabled)
     {
         if (enabled)
@@ -223,69 +269,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
             CustomName = "VibeSkuaUser";
             CustomGuild = "Hidden";
 
-            _streamerModeCts?.Cancel();
-            _streamerModeCts?.Dispose();
-            _streamerModeCts = new CancellationTokenSource();
-            var token = _streamerModeCts.Token;
-
-            // Off Windows each game call is a round trip to the separate game window, so the parts the game rarely
-            // redraws (gold, chat, map title) are refreshed every 2 s instead of every 0.5 s.
-            int slowEvery = OperatingSystem.IsWindows() ? 1 : 4;
-            Task.Run(async () => 
-            {
-                for (int tick = 0; !token.IsCancellationRequested; tick++)
-                {
-                    try
-                    {
-                        var flash = _lazyFlash.Value;
-                        if (flash == null) return;
-
-                        // Nothing to hide until a character is on screen.
-                        if (flash.IsNull("world.myAvatar"))
-                        {
-                            await Task.Delay(500, token);
-                            continue;
-                        }
-
-                        // Override visuals only, NEVER overwrite objData as it breaks shops/inventory
-                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", "VibeSkuaUser");
-                        flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", "Hidden");
-                        flash.Call("setGameObject", "world.rootClass.ui.mcPortrait.strName.text", "VibeSkuaUser");
-                        flash.Call("setGameObject", "world.rootClass.ui.mcPortraitTarget.strName.text", "Hidden");
-
-                        if (tick % slowEvery != 0)
-                        {
-                            await Task.Delay(500, token);
-                            continue;
-                        }
-
-                        // Hide Gold/Coins visually instead of wiping the client's cached integer amounts
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teGold.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teCoins.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strGold.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.strCoins.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtGold.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.txtCoins.visible", false);
-
-                        // Hide chat
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.t1.visible", false);
-                        flash.Call("setGameObject", "world.rootClass.ui.mcInterface.te.visible", false);
-
-                        // Force map UI text cleanly
-                        var rawMapName = flash.GetGameObject("world.strMapName") ?? "";
-                        if (!string.IsNullOrEmpty(rawMapName) && rawMapName != "null")
-                        {
-                            var cleanMapName = rawMapName.Length > 1 
-                                ? char.ToUpper(rawMapName[0]) + rawMapName.Substring(1).ToLower() 
-                                : rawMapName.ToUpper();
-
-                            flash.Call("setGameObject", "ui.mcInterface.areaList.title.t1.text", cleanMapName);
-                        }
-                    }
-                    catch { }
-                    await Task.Delay(500, token);
-                }
-            }, token);
+            HideStreamerVisuals();
         }
         else
         {
