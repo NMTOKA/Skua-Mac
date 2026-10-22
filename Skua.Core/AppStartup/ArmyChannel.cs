@@ -34,6 +34,7 @@ public static class ArmyChannel
     private const int TimeoutMs = 3000;
 
     private static Socket? _listener;
+    private static CancellationTokenSource? _stop;
     private static string? _socketPath;
 
     public static string Directory { get; } = Path.Combine(
@@ -63,10 +64,10 @@ public static class ArmyChannel
             listener.Bind(new UnixDomainSocketEndPoint(_socketPath));
             listener.Listen(8);
             _listener = listener;
+            _stop = new CancellationTokenSource();
             AppDomain.CurrentDomain.ProcessExit += (_, _) => Stop();
 
-            Thread thread = new(() => AcceptLoop(listener, handler)) { IsBackground = true, Name = "Army channel" };
-            thread.Start();
+            _ = Task.Run(() => AcceptLoop(listener, handler, _stop.Token));
         }
         catch (Exception ex)
         {
@@ -78,6 +79,8 @@ public static class ArmyChannel
     {
         try
         {
+            // Cancel the pending accept first: disposing a socket with a blocking accept() in progress hangs on macOS.
+            _stop?.Cancel();
             _listener?.Dispose();
             _listener = null;
             if (_socketPath is not null)
@@ -86,14 +89,14 @@ public static class ArmyChannel
         catch { }
     }
 
-    private static void AcceptLoop(Socket listener, Func<Command, Task<int>> handler)
+    private static async Task AcceptLoop(Socket listener, Func<Command, Task<int>> handler, CancellationToken stop)
     {
         while (true)
         {
             Socket client;
             try
             {
-                client = listener.Accept();
+                client = await listener.AcceptAsync(stop);
             }
             catch
             {
