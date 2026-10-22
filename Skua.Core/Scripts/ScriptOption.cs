@@ -228,20 +228,36 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
             _streamerModeCts = new CancellationTokenSource();
             var token = _streamerModeCts.Token;
 
+            // Off Windows each game call is a round trip to the separate game window, so the parts the game rarely
+            // redraws (gold, chat, map title) are refreshed every 2 s instead of every 0.5 s.
+            int slowEvery = OperatingSystem.IsWindows() ? 1 : 4;
             Task.Run(async () => 
             {
-                while (!token.IsCancellationRequested)
+                for (int tick = 0; !token.IsCancellationRequested; tick++)
                 {
                     try
                     {
                         var flash = _lazyFlash.Value;
                         if (flash == null) return;
 
+                        // Nothing to hide until a character is on screen.
+                        if (flash.IsNull("world.myAvatar"))
+                        {
+                            await Task.Delay(500, token);
+                            continue;
+                        }
+
                         // Override visuals only, NEVER overwrite objData as it breaks shops/inventory
                         flash.Call("setGameObject", "world.myAvatar.pMC.pname.ti.text", "VibeSkuaUser");
                         flash.Call("setGameObject", "world.myAvatar.pMC.pname.tg.text", "Hidden");
                         flash.Call("setGameObject", "world.rootClass.ui.mcPortrait.strName.text", "VibeSkuaUser");
                         flash.Call("setGameObject", "world.rootClass.ui.mcPortraitTarget.strName.text", "Hidden");
+
+                        if (tick % slowEvery != 0)
+                        {
+                            await Task.Delay(500, token);
+                            continue;
+                        }
 
                         // Hide Gold/Coins visually instead of wiping the client's cached integer amounts
                         flash.Call("setGameObject", "world.rootClass.ui.mcInterface.teGold.visible", false);
