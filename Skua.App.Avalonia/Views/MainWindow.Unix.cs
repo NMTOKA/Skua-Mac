@@ -169,11 +169,29 @@ public partial class MainWindow
     /// <summary>An army action from another Skua Mac window (or the Army menu of this one).</summary>
     private Task<int> OnArmyCommand(ArmyChannel.Command command)
     {
+        if (command.Msg == ArmyChannel.StatusMessage)
+            return Dispatcher.UIThread.InvokeAsync(ArmyStatusFlags).GetTask();
+
         return Dispatcher.UIThread.InvokeAsync(() =>
             HandleArmyMessage(command.Msg, new IntPtr(command.W), new IntPtr(command.L), command.Data)?.ToInt32() ?? -1).GetTask();
     }
 
-    private MenuItem? _armyStatus;
+    private static int ArmyStatusFlags()
+    {
+        int flags = 0;
+        try
+        {
+            if (Ioc.Default.GetRequiredService<IScriptInterface>().Player.LoggedIn)
+                flags |= ArmyChannel.StatusLoggedIn;
+            if (Ioc.Default.GetRequiredService<IScriptManager>().ScriptRunning)
+                flags |= ArmyChannel.StatusScriptRunning;
+        }
+        catch { }
+        return flags;
+    }
+
+    private MenuItem? _armyMenu, _armyStatus;
+    private readonly System.Collections.Generic.List<MenuItem> _armyWindowItems = new();
     private MenuItem? _armyLagKiller, _armyHeadless, _armyHidePlayers;
 
     /// <summary>
@@ -187,6 +205,7 @@ public partial class MainWindow
         _armyHidePlayers = ArmyToggle(ArmyChannel.OptionHidePlayers, () => _options.HidePlayers);
 
         MenuItem army = new() { Header = "Army" };
+        _armyMenu = army;
         army.Classes.Add("top-nav-item");
         army.Items.Add(_armyStatus);
         army.Items.Add(new Separator());
@@ -231,9 +250,11 @@ public partial class MainWindow
 
     private void RefreshArmyMenu()
     {
-        int count = ArmyChannel.Instances().Count;
+        System.Collections.Generic.List<int> pids = ArmyChannel.Instances();
+        int count = pids.Count;
         if (_armyStatus is not null)
             _armyStatus.Header = count == 1 ? "1 Skua Mac window running" : $"{count} Skua Mac windows running";
+        RefreshArmyWindowList(pids);
         // Each toggle says what clicking it does, based on this window's setting.
         if (_armyLagKiller is not null)
             _armyLagKiller.Header = $"Turn Lag Killer {(_options.LagKiller ? "off" : "on")} on all windows";
@@ -241,6 +262,46 @@ public partial class MainWindow
             _armyHeadless.Header = _options.HeadlessMode ? "Show the game on all windows" : "Hide the game (headless) on all windows";
         if (_armyHidePlayers is not null)
             _armyHidePlayers.Header = $"{(_options.HidePlayers ? "Show" : "Hide")} other players on all windows";
+    }
+
+    /// <summary>
+    /// One line per running window under the count: its character and whether it is logged in and running a
+    /// script. Lines start as "checking..." and fill in as each window answers.
+    /// </summary>
+    private void RefreshArmyWindowList(System.Collections.Generic.List<int> pids)
+    {
+        if (_armyMenu is null || _armyStatus is null)
+            return;
+
+        foreach (MenuItem old in _armyWindowItems)
+            _armyMenu.Items.Remove(old);
+        _armyWindowItems.Clear();
+
+        int index = _armyMenu.Items.IndexOf(_armyStatus) + 1;
+        for (int i = 0; i < pids.Count; i++)
+        {
+            int pid = pids[i];
+            string who = ArmyChannel.CharacterName(pid) is { Length: > 0 } name ? name : $"Window {i + 1}";
+            if (pid == Environment.ProcessId)
+                who += " (this window)";
+
+            MenuItem line = new() { Header = $"    {who}: checking...", IsEnabled = false };
+            _armyWindowItems.Add(line);
+            _armyMenu.Items.Insert(index + i, line);
+
+            _ = Task.Run(async () =>
+            {
+                int? flags = await ArmyChannel.SendAsync(pid, new ArmyChannel.Command(ArmyChannel.StatusMessage, 0, 0, null));
+                string state = flags switch
+                {
+                    null or < 0 => "not responding",
+                    _ when (flags & ArmyChannel.StatusLoggedIn) == 0 => "not logged in",
+                    _ when (flags & ArmyChannel.StatusScriptRunning) != 0 => "script running",
+                    _ => "logged in, no script running",
+                };
+                Dispatcher.UIThread.Post(() => line.Header = $"    {who}: {state}");
+            });
+        }
     }
 
     /// <summary>A menu item that runs <paramref name="send"/> and shows how many windows it reached.</summary>

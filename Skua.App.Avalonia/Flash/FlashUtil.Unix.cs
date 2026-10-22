@@ -60,6 +60,33 @@ public partial class FlashUtil : IFlashUtil
 
     private bool _cleaningUp;
 
+    // A game window that dies while starting up (before the game has loaded) is restarted once without asking.
+    private bool _hostLoaded;
+    private bool _restartedAfterEarlyExit;
+
+    /// <summary>The game window's output and exit codes, for diagnosing a game window that closes by itself.</summary>
+    public static string HostLogPath { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Logs", "Skua Mac", "game-window.log");
+
+    private static readonly object HostLogLock = new();
+
+    private static void LogHost(string line)
+    {
+        Trace.WriteLine($"[FlashHost] {line}");
+        try
+        {
+            lock (HostLogLock)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(HostLogPath)!);
+                FileInfo info = new(HostLogPath);
+                if (info.Exists && info.Length > 2 * 1024 * 1024)
+                    File.Move(HostLogPath, HostLogPath + ".old", overwrite: true);
+                File.AppendAllText(HostLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{Environment.ProcessId}] {line}\n");
+            }
+        }
+        catch { /* ignored */ }
+    }
+
     // The Windows build caches the SWF bytes in RAM; the host loads it from disk here.
     public static void PreloadSwf() { }
 
@@ -74,6 +101,7 @@ public partial class FlashUtil : IFlashUtil
         }
 
         CleanupOldHost();
+        _hostLoaded = false;
 
         _cts = new CancellationTokenSource();
         int port = GetFreePort();
@@ -160,11 +188,12 @@ public partial class FlashUtil : IFlashUtil
     private Process LaunchHost(ProcessStartInfo psi)
     {
         Process p = new() { StartInfo = psi, EnableRaisingEvents = true };
-        p.OutputDataReceived += (_, e) => { if (e.Data is not null) Trace.WriteLine($"[FlashHost] {e.Data}"); };
-        p.ErrorDataReceived += (_, e) => { if (e.Data is not null) Trace.WriteLine($"[FlashHost] {e.Data}"); };
+        p.OutputDataReceived += (_, e) => { if (e.Data is not null && !e.Data.StartsWith("[page]")) LogHost(e.Data); };
+        p.ErrorDataReceived += (_, e) => { if (e.Data is not null) LogHost(e.Data); };
+        DateTime started = DateTime.Now;
         p.Exited += (_, _) =>
         {
-            Trace.WriteLine($"[FlashHost] exited with code {SafeExitCode(p)}");
+            LogHost($"game window exited with code {SafeExitCode(p)} after {(DateTime.Now - started).TotalSeconds:0}s");
             if (_cleaningUp || !ReferenceEquals(p, _host))
                 return;
 
@@ -172,8 +201,17 @@ public partial class FlashUtil : IFlashUtil
             foreach (var tcs in _pending.Values)
                 tcs.TrySetCanceled();
             _pending.Clear();
+
+            if (!_hostLoaded && !_restartedAfterEarlyExit)
+            {
+                _restartedAfterEarlyExit = true;
+                LogHost("game window closed while starting; restarting it");
+                Dispatcher.UIThread.Post(InitializeFlash);
+                return;
+            }
             HostExited?.Invoke();
         };
+        LogHost($"starting game window ({Path.GetFileName(psi.FileName)})");
         p.Start();
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
@@ -267,6 +305,11 @@ public partial class FlashUtil : IFlashUtil
         {
             string function = ev.ToString();
             object[] args = { msg.Value<string>("a") ?? string.Empty };
+            if (function == "loaded")
+            {
+                _hostLoaded = true;
+                _restartedAfterEarlyExit = false;
+            }
             // The ActiveX FlashCall event fires on the UI thread; keep that for handlers.
             Dispatcher.UIThread.Post(() =>
             {

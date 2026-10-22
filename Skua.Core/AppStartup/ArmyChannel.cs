@@ -28,6 +28,24 @@ public static class ArmyChannel
     public const uint LoadScriptMessage = 0x0400 + 453;
     public const uint JumpPlayerMessage = 0x0400 + 457;
 
+    /// <summary>macOS only: asks a copy how it is doing. Reply: <see cref="StatusLoggedIn"/> | <see cref="StatusScriptRunning"/>.</summary>
+    public const uint StatusMessage = 0x0400 + 470;
+    public const int StatusLoggedIn = 1, StatusScriptRunning = 2;
+
+    /// <summary>The character name a copy last logged in with (MainWindow writes it for the Windows tab titles).</summary>
+    public static string? CharacterName(int pid)
+    {
+        try
+        {
+            string file = Path.Combine(Path.GetTempPath(), "VibeSkuaTabs", $"{pid}.txt");
+            return File.Exists(file) ? File.ReadAllText(file).Trim() : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>SetOptionMessage ids (wParam); lParam is 1 for on, 0 for off.</summary>
     public const int OptionLagKiller = 1, OptionHeadless = 2, OptionHidePlayers = 3, OptionScript = 99;
 

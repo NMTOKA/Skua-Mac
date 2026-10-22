@@ -16,17 +16,36 @@ internal static class MacInstances
 {
     private const int CascadeStep = 40;
 
+    /// <summary>Must run from <see cref="App.Initialize"/>: macOS builds the app menu before the main window opens.</summary>
     public static void AddAppMenu(Application app)
     {
+        NativeMenuItem about = new("About Skua Mac");
+        about.Click += (_, _) => ShowAbout();
+
         NativeMenuItem newWindow = new("New Skua Window")
         {
             Gesture = new KeyGesture(Key.N, KeyModifiers.Meta),
         };
         newWindow.Click += (_, _) => LaunchNewInstance();
 
+        NativeMenuItem updates = new("Check for Updates...");
+        updates.Click += (_, _) => MacUpdates.CheckNow();
+
         NativeMenu menu = new();
+        menu.Items.Add(about);
+        menu.Items.Add(updates);
+        menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(newWindow);
         NativeMenu.SetMenu(app, menu);
+    }
+
+    private static void ShowAbout()
+    {
+        CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetService<Skua.Core.Interfaces.IDialogService>()?.ShowMessageBox(
+            $"Skua Mac {MacUpdates.CurrentVersion.ToString(3)}\n\n"
+            + "A macOS port of VibeSkua by NinjaXz, built on Skua (auqw/skua).\n"
+            + "github.com/NMTOKA/Skua-Mac",
+            "About Skua Mac");
     }
 
     /// <summary>Starts another copy of the app (Finder would only switch to the running one).</summary>

@@ -90,7 +90,7 @@ cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 | Screenshots (Discord) | GDI capture | Captured from the game window |
 | Game window closed/crashed | n/a | Client asks whether to reopen it |
 | Sound alerts | Tone beeps | System alert sound |
-| Auto-update | Velopack | Not set up |
+| Updates | Velopack auto-update | Checks GitHub Releases daily (and Skua Mac menu > Check for Updates) and offers the download |
 
 ## Performance diagnostics
 
@@ -104,11 +104,14 @@ The Windows tab host drives its clients with `WM_SKUA_*` window messages. On mac
 process, so each one listens on a Unix domain socket, `~/Library/Application Support/VibeSkua/army/<pid>.sock`
 (folder readable only by you). The sender lists the sockets, skips and removes ones whose process has quit, and
 sends each a JSON line `{"Msg":1474,"W":99,"L":1,"Data":null}` using the same `WM_SKUA_*` numbers; the reply is one
-number (for example 1/0 for "logged in?"). Code: `Skua.Core/AppStartup/ArmyChannel.cs` (transport),
+number (for example 1/0 for "logged in?"). macOS adds one action, 1494 (status), answered with flags 1 = logged in, 2 = script running; the Army menu uses it to list each window. Code: `Skua.Core/AppStartup/ArmyChannel.cs` (transport),
 `Skua.App.Avalonia/Views/MainWindow.Army.cs` (what each action does, shared with the Windows window procedure) and
 `MainWindow.Unix.cs` (the Army menu). The army hotkeys use the same channel.
 
 ## Where things live
+
+- Game window log (output and exit codes): `~/Library/Logs/Skua Mac/game-window.log`. If the game window closes
+  while loading, the client restarts it once without asking.
 
 - Game profiles (Flash settings, saved logins): `~/Library/Application Support/skua-flashhost/instances/<n>`.
   Instance 1 is reused by the first running client, instance 2 by the second, and so on.
@@ -119,4 +122,5 @@ number (for example 1/0 for "logged in?"). Code: `Skua.Core/AppStartup/ArmyChann
 
 - Hotkeys pressed while the game window (rather than the Skua Mac bar) has focus.
 - Army **Log in all windows**, **Send all to map/player** with logged-in accounts (start/stop scripts, load
-  script and the option switches were tested across two windows).
+  script, the option switches and the per-window status were tested across two windows).
+- Streamer Mode re-hiding after a respawn or gear change (it uses the death event and the `equipItem` packet).

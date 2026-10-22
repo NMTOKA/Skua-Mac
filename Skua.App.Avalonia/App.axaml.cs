@@ -35,6 +35,9 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+#if !IS_WINDOWS
+        MacInstances.AddAppMenu(this);
+#endif
     }
 
     [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetParent", SetLastError = true)]
@@ -228,9 +231,9 @@ public partial class App : Application
                 var macWindow = new Views.MainWindow { WindowStartupLocation = global::Avalonia.Controls.WindowStartupLocation.CenterScreen };
                 desktop.MainWindow = macWindow;
 #if !IS_WINDOWS
-                // More bots = more copies of the app: File menu "New Skua Window" (⌘N), staggered on screen.
-                MacInstances.AddAppMenu(this);
+                // More bots = more copies of the app (Skua Mac menu > New Skua Window), staggered on screen.
                 macWindow.Opened += (_, _) => MacInstances.Cascade(macWindow);
+                _ = MacUpdates.CheckOnStartupAsync();
 #endif
             }
             else

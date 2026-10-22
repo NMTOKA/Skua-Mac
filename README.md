@@ -25,12 +25,17 @@ To control all your bots at once, use the **Army** menu in any Skua Mac window. 
 - **Send all to map... / Send all to player...**
 - **Lag Killer**, **Hide the game (headless)** and **Hide other players**: switch them on or off everywhere
 
-The top line of the menu shows how many Skua Mac windows are running, and after each click it shows how many windows got it. The army hotkeys (Options > HotKeys) do the same things.
+The top of the menu lists every Skua Mac window with its character and whether it's logged in and running a script, so you can spot a bot that stopped. After each click it shows how many windows got it. The army hotkeys (Options > HotKeys) do the same things.
+
+## Updating
+
+Skua Mac checks for a new version once a day and asks if you want to download it. You can also check yourself: **Skua Mac** menu > **Check for Updates...**. To update, download the new `.dmg` and drag Skua Mac into Applications to replace the old one. Your settings and scripts are kept.
 
 ## If something goes wrong
 
 - **The game window never appears.** Make sure the Artix Game Launcher is in your Applications folder and that you allowed Rosetta. Then quit and reopen Skua Mac.
 - **"Skua Mac is damaged" or it won't open.** Do the Open Anyway step in Install step 4. If that option is missing, open the Terminal app and run `xattr -dr com.apple.quarantine "/Applications/Skua Mac.app"`, then try again.
+- **The game window keeps closing.** Skua Mac restarts it once by itself if it closes while loading. If it keeps happening, please report it on the Issues page and attach `~/Library/Logs/Skua Mac/game-window.log` (in Finder: Go > Go to Folder, then paste that path).
 - **A button shows "Something went wrong".** The bot keeps running. Details are saved in `crash.txt` inside the app; please report it on the Issues page.
 
 > Botting is against AQW's rules. Use an alt account if you don't want to risk your main.

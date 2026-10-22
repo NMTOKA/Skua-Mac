@@ -30,6 +30,8 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
         StrongReferenceMessenger.Default.Register<ScriptOption, ScriptStoppedMessage, int>(this, (int)MessageChannels.ScriptStatus, ScriptStopped);
         StrongReferenceMessenger.Default.Register<ScriptOption, MapChangedMessage, int>(this, (int)MessageChannels.GameEvents, MapChanged);
         StrongReferenceMessenger.Default.Register<ScriptOption, CellChangedMessage, int>(this, (int)MessageChannels.GameEvents, CellChanged);
+        StrongReferenceMessenger.Default.Register<ScriptOption, PlayerDeathMessage, int>(this, (int)MessageChannels.GameEvents, PlayerDeath);
+        StrongReferenceMessenger.Default.Register<ScriptOption, ExtensionPacketMessage, int>(this, (int)MessageChannels.GameEvents, ExtensionPacket);
         _isInitializing = false;
     }
 
@@ -43,6 +45,25 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     {
         if (recipient.StreamerMode)
             recipient.HideStreamerVisuals();
+    }
+
+    private void PlayerDeath(ScriptOption recipient, PlayerDeathMessage message)
+    {
+        if (recipient.StreamerMode)
+            recipient.HideStreamerVisuals(afterRespawn: true);
+    }
+
+    private void ExtensionPacket(ScriptOption recipient, ExtensionPacketMessage message)
+    {
+        if (!recipient.StreamerMode)
+            return;
+        try
+        {
+            // Changing gear redraws the character.
+            if ((string?)message.Packet["params"]?.dataObj?.cmd == "equipItem")
+                recipient.HideStreamerVisuals();
+        }
+        catch { }
     }
 
     private void ScriptStopped(ScriptOption recipient, ScriptStoppedMessage message)
@@ -203,7 +224,7 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
     /// so this runs on enabling Streamer Mode and after each map or cell change, not on a timer. A newer call
     /// cancels one still waiting for the game to finish loading.
     /// </summary>
-    private void HideStreamerVisuals()
+    private void HideStreamerVisuals(bool afterRespawn = false)
     {
         _streamerModeCts?.Cancel();
         _streamerModeCts?.Dispose();
@@ -216,6 +237,10 @@ public partial class ScriptOption : ObservableRecipient, IScriptOption, IOptionD
             {
                 var flash = _lazyFlash.Value;
                 if (flash == null) return;
+
+                // After a death, wait (up to 30 s) until the character is alive again: respawning redraws it.
+                for (int i = 0; afterRespawn && i < 60 && flash.GetGameObject<int>("world.myAvatar.dataLeaf.intState") == 0; i++)
+                    await Task.Delay(500, token);
 
                 // Wait (up to 10 s) for the character to be drawn, then a moment more for the interface.
                 for (int i = 0; i < 40 && flash.IsNull("world.myAvatar.pMC"); i++)
