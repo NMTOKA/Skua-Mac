@@ -2,9 +2,11 @@
 
 **Skua Mac** is the AQW bot client [VibeSkua](https://github.com/NinjaXz/VibeSkua), made to run natively on Apple Silicon Macs (M1 and newer). No virtual machine, no Windows, no coding.
 
+> Skua Mac is a macOS port of **[VibeSkua](https://github.com/NinjaXz/VibeSkua) by NinjaXz**, which is built on **[Skua](https://github.com/auqw/skua)**. All the bot features come from those projects; this one makes them work on a Mac. See [Credits](#credits--acknowledgements).
+
 ## Install
 
-1. **Download** the latest `Skua-Mac-….dmg` from the [Releases page](https://github.com/NMTOKA/VibeSkua/releases/latest).
+1. **Download** the latest `Skua-Mac-….dmg` from the [Releases page](https://github.com/NMTOKA/Skua-Mac/releases/latest).
 2. **Open the file** and drag **Skua Mac** onto the **Applications** folder.
 3. **Install the [Artix Game Launcher](https://www.artix.com/downloads/artixlauncher/)** if you don't have it. It's free, and Skua Mac uses its Flash player.
 4. **Open Skua Mac** from Applications. The first time, macOS will say it can't check the app because it isn't from the App Store. Click **Done**, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Skua Mac. You only do this once.
@@ -55,7 +57,8 @@ Want to build it yourself or see how it works? See [README-macOS.md](README-macO
 
 * **[auqw/skua](https://github.com/auqw/skua)** — Original Skua framework and core botting API.
 * **[ArrowDev](https://github.com/ArrowDev123/Skua) (BlackArrow on Discord)** — Early Avalonia UI port foundation.
-* **NinjaXz** — Client overhaul: engineered the multi-client tabbed host, army controls & grid view, headless mode, autonomous script scheduler, repaired broken subsystems & crash loops, and modernized the desktop UI with Avalonia.
+* **[NinjaXz](https://github.com/NinjaXz/VibeSkua)** — VibeSkua, the client Skua Mac is ported from. Client overhaul: engineered the multi-client tabbed host, army controls & grid view, headless mode, autonomous script scheduler, repaired broken subsystems & crash loops, and modernized the desktop UI with Avalonia.
+* **[NMTOKA](https://github.com/NMTOKA/Skua-Mac)** — Skua Mac: the macOS port (game window bridge, Mac fixes, packaging, Army menu).
 
 ---
 
