@@ -5,12 +5,18 @@ A native macOS version of the AQW bot client [VibeSkua](https://github.com/Ninja
 
 ### New in this version
 
-- **Army menu**: control every open Skua Mac window from any one of them. Start or stop scripts, load a
-  script, log in or out, send everyone to a map or player, and switch Lag Killer, headless and Hide Players
-  on all windows at once. The army hotkeys work across windows too.
-- **Streamer Mode** no longer slows the game: it hides your name, gold and chat when you change map or cell
-  instead of re-hiding them twice a second.
-- Fixed Skua Mac sometimes freezing when you close it.
+- **Ready for macOS 28.** Skua Mac now includes a second game engine, [Ruffle](https://ruffle.rs), that runs the game
+  natively on Apple Silicon with no Rosetta. It switches on by itself on macOS 28, where the old Flash game window
+  can't open. On earlier macOS you can try it now (beta): open Terminal and run
+  `echo ruffle > ~/Library/Application\ Support/VibeSkua/game-engine`, then reopen Skua Mac.
+- **Update notice.** Skua Mac now tells you when a new version is out, and **Skua Mac menu > Check for Updates...**
+  checks any time. Updating keeps your settings and scripts.
+- **Army menu shows every window**: each bot's character and whether it's logged in and running a script, so you
+  can spot one that stopped.
+- **Skua Mac menu** now has About Skua Mac and New Skua Window (⌘N), which was missing before.
+- **Streamer Mode** also re-hides your name after you respawn or change gear.
+- If the game window closes while loading, Skua Mac now reopens it by itself. Problems with the game window are
+  logged to `~/Library/Logs/Skua Mac/game-window.log` to attach to bug reports.
 
 **Install:** download the `.dmg` below, open it, and drag **Skua Mac** into Applications.
 You also need the free [Artix Game Launcher](https://www.artix.com/downloads/artixlauncher/) installed.
