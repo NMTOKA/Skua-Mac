@@ -69,6 +69,30 @@ public partial class FlashUtil : IFlashUtil
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Logs", "Skua Mac", "game-window.log");
 
     private static readonly object HostLogLock = new();
+    private static readonly ConcurrentDictionary<string, DateTime> HostLogSeen = new();
+
+    /// <summary>
+    /// Game window output for the log. Electron echoes every page console line as "[page] ...": skipped. Ruffle sends
+    /// only warnings and errors that way, but some items' scripts fail every frame, so each message is logged at most
+    /// once a minute and stack trace lines are left out.
+    /// </summary>
+    private static void LogHostOutput(string? line)
+    {
+        if (line is null || line.StartsWith("\tat ", StringComparison.Ordinal))
+            return;
+        if (line.StartsWith("[page]", StringComparison.Ordinal))
+        {
+            if (!UseRuffle)
+                return;
+            DateTime now = DateTime.UtcNow;
+            if (HostLogSeen.TryGetValue(line, out DateTime last) && now - last < TimeSpan.FromMinutes(1))
+                return;
+            if (HostLogSeen.Count > 500)
+                HostLogSeen.Clear();
+            HostLogSeen[line] = now;
+        }
+        LogHost(line);
+    }
 
     private static void LogHost(string line)
     {
@@ -188,8 +212,8 @@ public partial class FlashUtil : IFlashUtil
     private Process LaunchHost(ProcessStartInfo psi)
     {
         Process p = new() { StartInfo = psi, EnableRaisingEvents = true };
-        p.OutputDataReceived += (_, e) => { if (e.Data is not null && !e.Data.StartsWith("[page]")) LogHost(e.Data); };
-        p.ErrorDataReceived += (_, e) => { if (e.Data is not null) LogHost(e.Data); };
+        p.OutputDataReceived += (_, e) => LogHostOutput(e.Data);
+        p.ErrorDataReceived += (_, e) => LogHostOutput(e.Data);
         DateTime started = DateTime.Now;
         p.Exited += (_, _) =>
         {
@@ -304,7 +328,8 @@ public partial class FlashUtil : IFlashUtil
         if (msg.TryGetValue("ev", out JToken? ev))
         {
             string function = ev.ToString();
-            object[] args = { msg.Value<string>("a") ?? string.Empty };
+            string arg = msg.Value<string>("a") ?? string.Empty;
+            object[] args = { UseRuffle ? NormalizeRuffleNumbers(arg)! : arg };
             if (function == "loaded")
             {
                 _hostLoaded = true;
@@ -406,6 +431,8 @@ public partial class FlashUtil : IFlashUtil
                 throw new InvalidOperationException(reply.Value<string>("err") ?? "Flash call failed.");
 
             string? text = ToWindowsReturnText(reply["r"]);
+            if (UseRuffle)
+                text = NormalizeRuffleNumbers(text);
             if (text is null)
                 return default!;
 

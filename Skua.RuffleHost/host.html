@@ -105,6 +105,23 @@
   window.load = function () { return 0; };
   window.load.valueOf = function () { emit('pre-load', []); return 0; };
 
+  // WebKit drops the body of a POST to a custom URL scheme, so the host app would forward the game's login (and
+  // any other POST) to Artix empty. Carry the body in the X-Skua-Body header (base64); RuffleHost.swift restores it.
+  var pageFetch = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    var req;
+    try { req = new Request(input, init); } catch (e) { return pageFetch(input, init); }
+    if (req.method === 'GET' || req.method === 'HEAD' || req.url.indexOf(location.origin + '/proxy/') !== 0)
+      return pageFetch(req);
+    return req.arrayBuffer().then(function (buf) {
+      var bytes = new Uint8Array(buf), bin = '';
+      for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      var headers = new Headers(req.headers);
+      headers.set('X-Skua-Body', btoa(bin));
+      return pageFetch(req.url, { method: req.method, headers: headers, credentials: req.credentials, cache: 'no-store' });
+    });
+  };
+
   // In the browser, Ruffle reaches TCP game servers through WebSocket proxies, one per host and port. The .NET
   // client relays ws://127.0.0.1:<port>/sock/<host>/<port> to the real server.
   var servers = {};

@@ -114,13 +114,20 @@ final class SchemeHandler: NSObject, WKURLSchemeHandler {
         var req = URLRequest(url: targetURL)
         req.httpMethod = task.request.httpMethod ?? "GET"
         for (k, v) in task.request.allHTTPHeaderFields ?? [:] {
-            if ["host", "origin", "referer", "cookie", "content-length", "accept-encoding"].contains(k.lowercased()) { continue }
+            if ["host", "origin", "referer", "cookie", "content-length", "accept-encoding", "x-skua-body"].contains(k.lowercased()) { continue }
             req.setValue(v, forHTTPHeaderField: k)
         }
         // What the Flash plugin sent, so the game's web API sees the same requests as from the Electron host.
         req.setValue("https://game.aq.com/game/", forHTTPHeaderField: "Referer")
         req.setValue("ShockwaveFlash/32.0.0.344", forHTTPHeaderField: "X-Requested-With")
-        req.httpBody = task.request.httpBody ?? task.request.httpBodyStream.map(readAll)
+        // host.html sends POST bodies in X-Skua-Body: WebKit drops the body of a request to a custom scheme.
+        if let encoded = task.request.value(forHTTPHeaderField: "X-Skua-Body") {
+            req.httpBody = Data(base64Encoded: encoded)
+        } else {
+            req.httpBody = task.request.httpBody ?? task.request.httpBodyStream.map(readAll)
+        }
+        let method = req.httpMethod ?? "GET"
+        let sentBytes = req.httpBody?.count ?? 0
 
         let key = ObjectIdentifier(task)
         let dataTask = session.dataTask(with: req) { [weak self] data, response, error in
@@ -130,6 +137,10 @@ final class SchemeHandler: NSObject, WKURLSchemeHandler {
                 guard let http = response as? HTTPURLResponse else {
                     if let error { log("proxy \(targetURL.absoluteString): \(error.localizedDescription)") }
                     return self.fail(task, 502)
+                }
+                // Sizes only: request bodies can hold the login password.
+                if method != "GET" || http.statusCode >= 400 {
+                    log("proxy \(method) \(host)\(target.percentEncodedPath) sent \(sentBytes) bytes -> \(http.statusCode), \(data?.count ?? 0) bytes")
                 }
                 var headers = ["Cache-Control": "no-store"]
                 if let type = http.value(forHTTPHeaderField: "Content-Type") { headers["Content-Type"] = type }

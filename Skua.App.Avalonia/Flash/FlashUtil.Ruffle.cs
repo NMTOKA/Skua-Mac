@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -192,6 +193,68 @@ public partial class FlashUtil
         catch { /* ignored */ }
         ws.Dispose();
         Trace.WriteLine($"[RuffleHost] disconnected from {host}:{port}");
+    }
+
+    /// <summary>
+    /// Ruffle's JSON.stringify writes whole Numbers as "897326396.0" where Flash Player writes "897326396", and the bot
+    /// reads IDs as integers (the inventory, bank, drops and quests all failed to load). This drops a ".0" ending of
+    /// a number in JSON (objects, arrays or a bare number), leaving text inside strings alone. Flash's output passes
+    /// through unchanged.
+    /// </summary>
+    internal static string? NormalizeRuffleNumbers(string? text)
+    {
+        if (string.IsNullOrEmpty(text) || text.IndexOf(".0", StringComparison.Ordinal) < 0)
+            return text;
+        char first = text[0];
+        if (first != '{' && first != '[' && first != '-' && !char.IsDigit(first))
+            return text;
+
+        StringBuilder? sb = null;
+        bool inString = false, escaped = false;
+        int copied = 0;
+        for (int i = 0; i < text.Length; i++)
+        {
+            char c = text[i];
+            if (inString)
+            {
+                if (escaped) escaped = false;
+                else if (c == '\\') escaped = true;
+                else if (c == '"') inString = false;
+                continue;
+            }
+            if (c == '"')
+            {
+                inString = true;
+                continue;
+            }
+            if (c != '.' || i == 0 || !char.IsDigit(text[i - 1]) || i + 1 >= text.Length || text[i + 1] != '0')
+                continue;
+
+            int end = i + 1;
+            while (end < text.Length && text[end] == '0')
+                end++;
+            if (end < text.Length && (char.IsDigit(text[end]) || text[end] is 'e' or 'E'))
+                continue;
+
+            // Only a number's own fraction: walk back over its digits to the delimiter before it.
+            int start = i - 1;
+            while (start > 0 && char.IsDigit(text[start - 1]))
+                start--;
+            if (start > 0 && text[start - 1] == '-')
+                start--;
+            if (start > 0 && text[start - 1] is not (':' or ',' or '[' or ' '))
+                continue;
+
+            sb ??= new StringBuilder(text.Length);
+            sb.Append(text, copied, i - copied);
+            copied = end;
+            i = end - 1;
+        }
+
+        if (sb is null)
+            return text;
+        sb.Append(text, copied, text.Length - copied);
+        return sb.ToString();
     }
 }
 #endif

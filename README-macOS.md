@@ -34,7 +34,13 @@ server through `ws://127.0.0.1:<port>/sock/<host>/<port>`, which the client rela
 (`FlashUtil.Ruffle.cs`, Artix hosts only). The game keeps running at full speed while the window is hidden or covered.
 
 Known differences under Ruffle:
-- Logging in and playing were tested by hand on macOS 27 (Apple Silicon). Please report what breaks.
+- Logging in, inventory, combat and walking were tested by hand on macOS 27 (Apple Silicon). Please report what breaks.
+- WebKit drops the body of a POST to a custom URL scheme, so `host.html` sends POST bodies (the login) in an
+  `X-Skua-Body` header and `RuffleHost.swift` restores them before forwarding to Artix.
+- Ruffle's `JSON.stringify` writes whole numbers as `123.0`; the client strips that `.0` from game data and packets
+  (`NormalizeRuffleNumbers`), because the bot reads item IDs as integers.
+- The game window log (`~/Library/Logs/Skua Mac/game-window.log`) lists Ruffle warnings and errors (each at most once
+  a minute) and every non-GET request the host relays, with sizes and status only.
 - The game's own "Save" username/password boxes don't stick: Ruffle allows those secure saves only for SWFs
   served over https. Skua's account manager is unaffected.
 - `ExternalInterface.call('pre-load')` is caught through `load.valueOf` in `host.html` (Ruffle runs the call as
