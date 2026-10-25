@@ -5,17 +5,13 @@ A native macOS version of the AQW bot client [VibeSkua](https://github.com/Ninja
 
 ### New in this version
 
-Fixes for the new Ruffle game engine (the one Skua Mac uses on macOS 28, or when you choose it):
-
-- **Logging in works.** The login request reached AQW empty, so the game showed "What? Try again."
-- **The bot sees your inventory and class again**, and with them the bank, drops, quests and shops. Ruffle writes
-  numbers slightly differently from Flash, and the bot couldn't read item IDs.
-- Ruffle problems are now written to `~/Library/Logs/Skua Mac/game-window.log` for bug reports.
-
-Nothing changes if you use the Flash engine (the default up to macOS 27).
-
-To try Ruffle on macOS 27, open Terminal and run `echo ruffle > ~/Library/Application\ Support/VibeSkua/game-engine`,
-then reopen Skua Mac. `echo flash > ~/Library/Application\ Support/VibeSkua/game-engine` switches back.
+- **Choose the game engine from the menu:** Skua Mac menu > **Game Engine** > Flash or Ruffle. No Terminal needed.
+  Ruffle runs the game natively on Apple Silicon and is the one that works on macOS 28.
+- **Save CPU with several bots:** Army menu > **Save CPU on windows you're not using**. Windows you aren't looking at
+  drop to 2 frames a second in low quality, like the Windows version's background tabs, and go back to normal when
+  you switch to them. Bots keep running.
+- **Ruffle uses much less disk:** it used to keep another copy of the game file on every launch; now it keeps one and
+  its cache is capped at 200 MB.
 
 **Install:** download the `.dmg` below, open it, and drag **Skua Mac** into Applications.
 You also need the free [Artix Game Launcher](https://www.artix.com/downloads/artixlauncher/) installed.

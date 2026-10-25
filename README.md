@@ -24,6 +24,7 @@ To control all your bots at once, use the **Army** menu in any Skua Mac window. 
 - **Log in / Log out all windows**: logins are spaced 2 seconds apart
 - **Send all to map... / Send all to player...**
 - **Lag Killer**, **Hide the game (headless)** and **Hide other players**: switch them on or off everywhere
+- **Save CPU on windows you're not using**: bots you aren't looking at run the game at 2 frames a second until you switch to them
 
 The top of the menu lists every Skua Mac window with its character and whether it's logged in and running a script, so you can spot a bot that stopped. After each click it shows how many windows got it. The army hotkeys (Options > HotKeys) do the same things.
 

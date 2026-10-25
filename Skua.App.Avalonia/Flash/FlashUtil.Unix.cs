@@ -52,6 +52,16 @@ public partial class FlashUtil : IFlashUtil
 
     public event FlashCallHandler? FlashCall;
 
+    /// <summary>Process id of the game window (Electron or SkuaRuffleHost), or null while it isn't running.</summary>
+    public int? HostProcessId
+    {
+        get
+        {
+            try { return _host is { HasExited: false } ? _host.Id : null; }
+            catch { return null; }
+        }
+    }
+
     /// <summary>Raised when the game window process exits on its own (closed by the user or crashed).</summary>
     public event Action? HostExited;
 

@@ -55,7 +55,7 @@ final class SchemeHandler: NSObject, WKURLSchemeHandler {
         cfg.httpCookieStorage = HTTPCookieStorage.shared
         // Game files are versioned by query string; keep them on disk like a browser would.
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        cfg.urlCache = URLCache(memoryCapacity: 64 << 20, diskCapacity: 1 << 30,
+        cfg.urlCache = URLCache(memoryCapacity: 64 << 20, diskCapacity: 200 << 20,
                                 directory: caches.appendingPathComponent("SkuaRuffleHost"))
         session = URLSession(configuration: cfg)
     }
@@ -109,6 +109,12 @@ final class SchemeHandler: NSObject, WKURLSchemeHandler {
               var target = URLComponents(string: "https://\(host)/") else { return fail(task, 403) }
         target.percentEncodedPath = "/" + (parts.count > 1 ? String(parts[1]) : "")
         target.percentEncodedQuery = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery
+        // The game loads its main file as Game....swf?ver=<random number> so browsers can't cache it; every launch
+        // stored another 3 MB copy. The server ignores the number, so drop it and let the cache keep one copy.
+        if let items = target.queryItems, items.contains(where: { $0.name == "ver" && ($0.value ?? "").hasPrefix("0.") }) {
+            let kept = items.filter { !($0.name == "ver" && ($0.value ?? "").hasPrefix("0.")) }
+            target.queryItems = kept.isEmpty ? nil : kept
+        }
         guard let targetURL = target.url else { return fail(task, 400) }
 
         var req = URLRequest(url: targetURL)

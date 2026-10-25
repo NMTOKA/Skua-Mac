@@ -30,6 +30,7 @@ public partial class MainWindow
         _flash.FlashCall += OnExternalHostCall;
         host.HostExited += OnHostExited;
         ArmyChannel.Listen(OnArmyCommand);
+        StartCpuSaver();
         Closed += (_, _) => ArmyChannel.Stop();
 
         // SKUA_FPS_OVERLAY=1 shows Avalonia's frame-rate overlay (diagnosing redraws that waste CPU).
@@ -236,6 +237,13 @@ public partial class MainWindow
         army.Items.Add(_armyLagKiller);
         army.Items.Add(_armyHeadless);
         army.Items.Add(_armyHidePlayers);
+        _armyCpuSaver = new MenuItem();
+        _armyCpuSaver.Click += (_, _) =>
+        {
+            CpuSaverEnabled = !CpuSaverEnabled;
+            RefreshArmyMenu();
+        };
+        army.Items.Add(_armyCpuSaver);
         army.Items.Add(new Separator());
         army.Items.Add(ArmyItem("New Skua Window", () =>
         {
@@ -262,6 +270,59 @@ public partial class MainWindow
             _armyHeadless.Header = _options.HeadlessMode ? "Show the game on all windows" : "Hide the game (headless) on all windows";
         if (_armyHidePlayers is not null)
             _armyHidePlayers.Header = $"{(_options.HidePlayers ? "Show" : "Hide")} other players on all windows";
+        if (_armyCpuSaver is not null)
+            _armyCpuSaver.Header = CpuSaverEnabled
+                ? "Stop saving CPU on windows you're not using"
+                : "Save CPU on windows you're not using";
+    }
+
+    private MenuItem? _armyCpuSaver;
+    private DispatcherTimer? _cpuSaverTimer;
+    private bool _cpuSaverThrottled;
+
+    // One switch for every window: a file the others see within a second, so it needs no army message.
+    private static readonly string CpuSaverFile = System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VibeSkua", "save-cpu-background");
+
+    private static bool CpuSaverEnabled
+    {
+        get => System.IO.File.Exists(CpuSaverFile);
+        set
+        {
+            try
+            {
+                if (value)
+                    System.IO.File.WriteAllText(CpuSaverFile, "on\n");
+                else
+                    System.IO.File.Delete(CpuSaverFile);
+            }
+            catch { }
+        }
+    }
+
+    /// <summary>
+    /// With "Save CPU on windows you're not using" on, a window whose Skua bar and game window are both in the
+    /// background runs the game at 2 frames a second in low quality (the Windows tab host's throttle for hidden
+    /// tabs), and goes back to normal as soon as the user switches to it. Bots keep running either way.
+    /// </summary>
+    private void StartCpuSaver()
+    {
+        _cpuSaverTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _cpuSaverTimer.Tick += (_, _) =>
+        {
+            bool background = false;
+            if (CpuSaverEnabled && _isFlashLoaded)
+            {
+                int front = MacInstances.FrontmostProcessId();
+                background = front > 0 && front != Environment.ProcessId && front != ExternalHost?.HostProcessId;
+            }
+            if (background == _cpuSaverThrottled)
+                return;
+            _cpuSaverThrottled = background;
+            ArmyThrottle(background);
+        };
+        _cpuSaverTimer.Start();
+        Closed += (_, _) => _cpuSaverTimer?.Stop();
     }
 
     /// <summary>

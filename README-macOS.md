@@ -16,8 +16,8 @@ Tested on macOS 27: the game loads to the login screen, and calls and events flo
 | Needs | Rosetta, Artix Game Launcher | nothing extra |
 | macOS 28 | won't open | works |
 
-Choose with `SKUA_GAME_ENGINE=ruffle` or `SKUA_GAME_ENGINE=flash`, or put the word in a file (no environment
-variable needed for the DMG app):
+Choose in the app: **Skua Mac menu > Game Engine**. Or set `SKUA_GAME_ENGINE=ruffle` or `SKUA_GAME_ENGINE=flash`, or put
+the word in the file the menu writes:
 
 ```bash
 echo ruffle > ~/Library/Application\ Support/VibeSkua/game-engine
