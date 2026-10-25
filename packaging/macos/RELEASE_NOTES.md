@@ -5,13 +5,11 @@ A native macOS version of the AQW bot client [VibeSkua](https://github.com/Ninja
 
 ### New in this version
 
-- **Choose the game engine from the menu:** Skua Mac menu > **Game Engine** > Flash or Ruffle. No Terminal needed.
-  Ruffle runs the game natively on Apple Silicon and is the one that works on macOS 28.
-- **Save CPU with several bots:** Army menu > **Save CPU on windows you're not using**. Windows you aren't looking at
-  drop to 2 frames a second in low quality, like the Windows version's background tabs, and go back to normal when
-  you switch to them. Bots keep running.
-- **Ruffle uses much less disk:** it used to keep another copy of the game file on every launch; now it keeps one and
-  its cache is capped at 200 MB.
+- **Fixed walking with the Ruffle game engine:** clicking to move made your character take a step and stop (your pet
+  still went the whole way). Ruffle sometimes ran two game frames at the same moment, and AQW treats "didn't move
+  since the last frame" as the end of a walk. Walking now works like it does with Flash.
+
+Nothing changes if you use the Flash engine. Choose the engine in **Skua Mac menu > Game Engine**.
 
 **Install:** download the `.dmg` below, open it, and drag **Skua Mac** into Applications.
 You also need the free [Artix Game Launcher](https://www.artix.com/downloads/artixlauncher/) installed.

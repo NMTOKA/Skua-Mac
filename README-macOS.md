@@ -35,6 +35,9 @@ server through `ws://127.0.0.1:<port>/sock/<host>/<port>`, which the client rela
 
 Known differences under Ruffle:
 - Logging in, inventory, combat and walking were tested by hand on macOS 27 (Apple Silicon). Please report what breaks.
+- Ruffle runs missed frames back to back after a hiccup, with the same `getTimer()`; AQW's walk stops when the
+  character didn't move between two frames. `host.html` caps the time Ruffle sees per animation frame at 25 ms, so
+  it never runs two 30 fps frames at once.
 - WebKit drops the body of a POST to a custom URL scheme, so `host.html` sends POST bodies (the login) in an
   `X-Skua-Body` header and `RuffleHost.swift` restores them before forwarding to Artix.
 - Ruffle's `JSON.stringify` writes whole numbers as `123.0`; the client strips that `.0` from game data and packets

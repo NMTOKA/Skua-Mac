@@ -105,6 +105,20 @@
   window.load = function () { return 0; };
   window.load.valueOf = function () { emit('pre-load', []); return 0; };
 
+  // Ruffle advances the game by the time between animation frames and, after a hiccup, runs the missed frames
+  // back to back. Those frames see the same getTimer(), and AQW's walk (AvatarMC.onEnterFrameWalk) stops when the
+  // character didn't move between two frames, so clicking to walk moved the character a step and stopped. Report at
+  // most 25 ms per tick (less than one 30 fps frame): the game then falls behind briefly instead, as Flash Player does.
+  var pageRAF = window.requestAnimationFrame.bind(window);
+  var lastStamp = null, gameStamp = 0;
+  window.requestAnimationFrame = function (callback) {
+    return pageRAF(function (stamp) {
+      gameStamp += lastStamp === null ? 0 : Math.min(stamp - lastStamp, 25);
+      lastStamp = stamp;
+      callback(gameStamp);
+    });
+  };
+
   // WebKit drops the body of a POST to a custom URL scheme, so the host app would forward the game's login (and
   // any other POST) to Artix empty. Carry the body in the X-Skua-Body header (base64); RuffleHost.swift restores it.
   var pageFetch = window.fetch.bind(window);
