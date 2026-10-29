@@ -172,7 +172,9 @@ func readAll(_ stream: InputStream) -> Data {
 }
 
 func log(_ text: String) {
-    FileHandle.standardOutput.write((text + "\n").data(using: .utf8)!)
+    // The client reads this pipe. If it has quit, the write fails: exit then instead of aborting on the exception
+    // the old write(_:) raises (the --parent check only notices every 2 seconds).
+    do { try FileHandle.standardOutput.write(contentsOf: Data((text + "\n").utf8)) } catch { exit(0) }
 }
 
 /// Borderless windows can't take keyboard focus by default; the game needs it.
@@ -257,7 +259,8 @@ final class Host: NSObject, NSApplicationDelegate, NSWindowDelegate, WKUIDelegat
     }
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
-        if let text = message.body as? String { log("[page] \(text)") }
+        // First line only: Ruffle adds log.file/log.line lines, which would get past the client's once-a-minute filter.
+        if let text = message.body as? String { log("[page] \(text.prefix { $0 != "\n" })") }
     }
 
     // Control calls from .NET (see FlashUtil.Unix.cs), routed through host.html.
