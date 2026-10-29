@@ -32,9 +32,19 @@ internal static class MacInstances
         NativeMenuItem updates = new("Check for Updates...");
         updates.Click += (_, _) => MacUpdates.CheckNow();
 
+        // Options > Application, under the name every Mac app uses for it.
+        NativeMenuItem settings = new("Settings...")
+        {
+            Gesture = new KeyGesture(Key.OemComma, KeyModifiers.Meta),
+        };
+        settings.Click += (_, _) => CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default
+            .GetService<Skua.Core.Interfaces.IWindowService>()?.ShowManagedWindow("Application");
+
         NativeMenu menu = new();
         menu.Items.Add(about);
         menu.Items.Add(updates);
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(settings);
         menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(newWindow);
         menu.Items.Add(CreateEngineMenu());

@@ -101,6 +101,7 @@ cd Skua.App.Avalonia/bin/Debug/net10.0 && ./VibeSkua
 | Screenshots (Discord) | GDI capture | Captured from the game window |
 | Game window closed/crashed | n/a | Client asks whether to reopen it |
 | Sound alerts | Tone beeps | System alert sound |
+| Menus | In the window | In the Skua Mac bar and in the macOS menu bar (Skua Mac menu > Settings..., ⌘, opens Options > Application) |
 | Updates | Velopack auto-update | Checks GitHub Releases daily (and Skua Mac menu > Check for Updates) and offers the download |
 
 ## Performance diagnostics

@@ -131,6 +131,8 @@ public partial class MainWindow : Window
             MainMenuControl.Items.Add(CreateMainMenuItem(item, isTopLevel: true));
 #if !IS_WINDOWS
         MainMenuControl.Items.Add(CreateArmyMenu());
+        if (OperatingSystem.IsMacOS())
+            MacMenuBar.Use(MainMenuControl);
 #endif
     }
 
