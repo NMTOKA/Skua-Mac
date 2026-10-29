@@ -27,6 +27,14 @@ To control all your bots at once, use the **Army** menu in any Skua Mac window. 
 
 The top of the menu lists every Skua Mac window with its character and whether it's logged in and running a script, so you can spot a bot that stopped. After each click it shows how many windows got it. The army hotkeys (Options > HotKeys) do the same things.
 
+## Saved accounts
+
+**Skua Mac** menu > **Account Manager...** opens Skua Manager. Save your accounts there, sort them into groups, and start one bot or a whole group already logged in, optionally with a script loaded or running.
+
+## Notifications
+
+Skua Mac can send a Mac notification when a script stops or crashes, or your character dies, while you're using another app. Choose which in **Skua Mac** menu > **Notifications**. If none appear, turn them on in **System Settings > Notifications > Skua Mac**.
+
 ## Updating
 
 Skua Mac checks for a new version once a day and asks if you want to download it. You can also check yourself: **Skua Mac** menu > **Check for Updates...**. To update, download the new `.dmg` and drag Skua Mac into Applications to replace the old one. Your settings and scripts are kept.
