@@ -3,7 +3,8 @@
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Name="Root"
              x:Class="Skua.Shared.Avalonia.Controls.Shell.WindowTitleBar">
-  <Grid Height="32"
+  <Grid x:Name="BarGrid"
+        Height="32"
         Background="{DynamicResource SkuaSurfaceAltBrush}">
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="Auto" />
@@ -12,6 +13,7 @@
     </Grid.ColumnDefinitions>
 
     <Grid Grid.Column="0"
+          x:Name="IconHost"
           Width="30"
           Height="30"
           Margin="6,0"
@@ -29,13 +31,16 @@
     </Grid>
 
     <Viewbox Grid.Column="1"
+             x:Name="TitleTextHost"
              Margin="6,0,0,0"
              HorizontalAlignment="Left">
-      <TextBlock Text="{Binding TitleText, ElementName=Root}"
+      <TextBlock x:Name="TitleTextBlock"
+                 Text="{Binding TitleText, ElementName=Root}"
                  Classes="titlebar-title" />
     </Viewbox>
 
     <StackPanel Grid.Column="2"
+                x:Name="CaptionButtons"
                 Height="28"
                 VerticalAlignment="Top"
                 Orientation="Horizontal">

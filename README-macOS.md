@@ -74,7 +74,8 @@ GitHub Apple Silicon runner: run it by hand for a test artifact, or push a `mac-
 
 This produces `Build/macOS/Skua Mac.app` (self-contained, about 320 MB, ad-hoc signed). Double-click it, or
 drag it to `/Applications`. The client shows as **Skua Mac** and shrinks to its title and menu bar, and the game appears directly underneath,
-docked to it: move or resize the Skua Mac bar and the game follows. Log in in the game. Set `SKUA_UNDOCKED=1` to
+docked to it: move or resize the Skua Mac bar and the game follows. Windows use the standard macOS buttons; the
+green one (or double-clicking the title) grows the bar and game together to fill the screen, and again restores them. Log in in the game. Set `SKUA_UNDOCKED=1` to
 get a separate, freely movable game window instead.
 On first launch macOS may ask to let Skua Mac find devices on the local network. The client and the game
 window talk over a local connection.

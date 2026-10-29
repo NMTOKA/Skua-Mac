@@ -70,9 +70,22 @@ public partial class MainWindow
         MinHeight = chrome;
         MaxHeight = chrome;
         Height = chrome;
+        MinWidth = DockedMinWidth;
+        if (Width < DockedMinWidth)
+            Width = DockedMinWidth;
+        MacWindowChrome.DisableFullScreen(this);
+        MacWindowChrome.RedirectZoomButton(this, ToggleDockedZoom);
+        TitleBar.ZoomRequested += (_, e) =>
+        {
+            e.Cancel = true;
+            ToggleDockedZoom();
+        };
         KeepDockedPairOnScreen();
         DockGameWindow();
     }
+
+    // Narrower than this and the menu bar no longer fits.
+    private const double DockedMinWidth = 640;
 
     private double GameHeightFor(double width) => Math.Round(width * GameAspect);
 
@@ -105,10 +118,53 @@ public partial class MainWindow
             Position = new PixelPoint(Position.X, Math.Max(screen.WorkingArea.Y, (int)(Position.Y - overflow * scaling)));
     }
 
+    // Where the bar was before the green button zoomed it, and the width it was zoomed to.
+    private PixelPoint _unzoomedPosition;
+    private double _unzoomedWidth, _zoomedWidth;
+
+    /// <summary>
+    /// The green window button (or double-clicking the title bar): grows the bar and the game together until the game
+    /// fills the screen, keeping its shape; again puts them back. macOS's own zoom can't, because the bar's height is
+    /// fixed and the game is a separate window.
+    /// </summary>
+    private void ToggleDockedZoom()
+    {
+        if (_zoomedWidth > 0 && Math.Abs(Width - _zoomedWidth) < 1)
+        {
+            _zoomedWidth = 0;
+            Width = _unzoomedWidth;
+            Position = _unzoomedPosition;
+            return;
+        }
+
+        Screen? screen = Screens.ScreenFromWindow(this);
+        if (screen is null)
+            return;
+
+        double scaling = DesktopScaling > 0 ? DesktopScaling : 1;
+        PixelRect area = screen.WorkingArea;
+        double areaWidth = area.Width / scaling;
+        double width = Math.Floor(Math.Max(DockedMinWidth, Math.Min(areaWidth, (area.Height / scaling - Bounds.Height) / GameAspect)));
+
+        _unzoomedPosition = Position;
+        _unzoomedWidth = Width;
+        _zoomedWidth = width;
+        Width = width;
+        Position = new PixelPoint(area.X + (int)((areaWidth - width) / 2 * scaling), area.Y);
+    }
+
     private void OnWindowStateChanged()
     {
         if (!_docked || ExternalHost is not FlashUtil host)
             return;
+
+        if (WindowState is WindowState.Maximized or WindowState.FullScreen)
+        {
+            // Zoomed or full screen some other way than the green button (which zooms the docked pair itself):
+            // the fixed-height bar can't fill the screen, so put it back.
+            WindowState = WindowState.Normal;
+            return;
+        }
 
         if (WindowState == WindowState.Minimized)
         {
