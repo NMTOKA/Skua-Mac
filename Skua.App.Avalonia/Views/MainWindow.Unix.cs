@@ -31,6 +31,8 @@ public partial class MainWindow
         host.HostExited += OnHostExited;
         ArmyChannel.Listen(OnArmyCommand);
         StartCpuSaver();
+        MacNotifications.GameWindowProcessId = () => ExternalHost?.HostProcessId;
+        MacNotifications.Start();
         Closed += (_, _) => ArmyChannel.Stop();
 
         // SKUA_FPS_OVERLAY=1 shows Avalonia's frame-rate overlay (diagnosing redraws that waste CPU).

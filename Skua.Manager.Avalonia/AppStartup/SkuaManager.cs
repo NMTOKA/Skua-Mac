@@ -23,12 +23,14 @@ internal class SkuaManager
         {
             new((string)"Accounts", s.GetRequiredService<AccountManagerViewModel>()),
             new((string)"Launcher", s.GetRequiredService<LauncherViewModel>()),
-            new((string)"Updater", s.GetRequiredService<AppUpdaterViewModel>()),
             new((string)"Scripts", s.GetRequiredService<ScriptUpdaterViewModel>()),
             new((string)"Options", s.GetRequiredService<ManagerOptionsViewModel>()),
             new((string)"Themes", s.GetRequiredService<ApplicationThemesViewModel>()),
             new((string)"About", s.GetRequiredService<AboutViewModel>()),
         };
+        // VibeSkua's updater installs Windows releases; Skua Mac checks for its own updates (Skua Mac menu).
+        if (!OperatingSystem.IsMacOS())
+            tabs.Insert(2, new((string)"Updater", s.GetRequiredService<AppUpdaterViewModel>()));
         return new(tabs, s.GetRequiredService<IDialogService>(), s.GetRequiredService<ISettingsService>());
     }
 

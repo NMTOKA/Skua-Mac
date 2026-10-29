@@ -37,6 +37,14 @@ internal static class Program
             .OnRestarted(_ => AppShortcutHelper.CreateOrUpdateShortcuts(createIfMissing: true))
             .Run();
 
+        // Named wait handles exist only on Windows. On macOS, Skua Mac menu > Account Manager brings a running
+        // Manager to the front instead of starting another.
+        if (!OperatingSystem.IsWindows())
+        {
+            RunApp(args);
+            return;
+        }
+
         const string eventName = @"Global\VibeSkua.Manager.SingleInstance.WakeEvent";
         bool createdNew;
         try

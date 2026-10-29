@@ -117,6 +117,14 @@ public class WindowService : IWindowService
             initialPos = new PixelPoint(managed.X.Value, managed.Y.Value);
         }
 
+#if !IS_WINDOWS
+        // macOS: tool windows reopen where they were last closed.
+        string placeKey = "tool-" + title;
+        bool hasPlace = OperatingSystem.IsMacOS() && !initialPos.HasValue && MacWindowPlaces.Get(placeKey) is not null;
+#else
+        bool hasPlace = false;
+#endif
+
         Window window = new()
         {
             Title = title,
@@ -150,7 +158,7 @@ public class WindowService : IWindowService
                 window.Position = initialPos.Value;
             };
         }
-        else
+        else if (!hasPlace)
         {
             Skua.Shared.Avalonia.Services.WindowPlacementHelper.CenterOnActiveScreen(window);
         }
@@ -165,6 +173,15 @@ public class WindowService : IWindowService
             window.Height = height;
             window.MinHeight = Math.Min(height, 300);
         }
+
+#if !IS_WINDOWS
+        if (OperatingSystem.IsMacOS() && !initialPos.HasValue)
+        {
+            if (hasPlace && !MacWindowPlaces.Restore(placeKey, window, restoreWidth: width > 0, restoreHeight: height > 0))
+                Skua.Shared.Avalonia.Services.WindowPlacementHelper.CenterOnActiveScreen(window);
+            window.Closing += (_, _) => MacWindowPlaces.Save(placeKey, window);
+        }
+#endif
 
         return window;
     }

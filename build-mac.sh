@@ -35,6 +35,15 @@ mkdir -p "$MACOS" "$CONTENTS/Resources" "$OUT"
   -p:UseAppHost=true -p:DebugType=None \
   -o "$MACOS" -v q -nologo
 
+echo "==> Adding Skua Manager (accounts)"
+# Same folder as the client: the shared libraries are identical, so only the Manager's own files are added.
+MANAGER_OUT="$STAGE/manager"
+"$DOTNET" publish "$ROOT/Skua.Manager.Avalonia/Skua.Manager.Avalonia.csproj" \
+  -c Release -r "$RID" --self-contained true \
+  -p:UseAppHost=true -p:DebugType=None \
+  -o "$MANAGER_OUT" -v q -nologo
+rsync -a --ignore-existing "$MANAGER_OUT"/ "$MACOS"/
+
 echo "==> Bundling the Flash host"
 HOST_SRC="$ROOT/Skua.FlashHost"
 HOST_DST="$MACOS/FlashHost"

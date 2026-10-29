@@ -231,8 +231,14 @@ public partial class App : Application
                 var macWindow = new Views.MainWindow { WindowStartupLocation = global::Avalonia.Controls.WindowStartupLocation.CenterScreen };
                 desktop.MainWindow = macWindow;
 #if !IS_WINDOWS
-                // More bots = more copies of the app (Skua Mac menu > New Skua Window), staggered on screen.
-                macWindow.Opened += (_, _) => MacInstances.Cascade(macWindow);
+                // More bots = more copies of the app (Skua Mac menu > New Skua Window). Each reopens where its bar
+                // was last time; without a saved spot, copies are staggered on screen.
+                macWindow.Opened += (_, _) =>
+                {
+                    if (!MacWindowPlaces.Restore(MacWindowPlaces.MainKey, macWindow, restoreWidth: true, restoreHeight: false))
+                        MacInstances.Cascade(macWindow);
+                };
+                macWindow.Closing += (_, _) => MacWindowPlaces.Save(MacWindowPlaces.MainKey, macWindow);
                 _ = MacUpdates.CheckOnStartupAsync();
 #endif
             }

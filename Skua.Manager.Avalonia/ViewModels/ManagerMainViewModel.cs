@@ -19,7 +19,9 @@ public partial class ManagerMainViewModel : ObservableRecipient
         _selectedTab = Tabs[0];
         _dialogService = dialogService;
         _settingsService = settingsService;
-        _title = $"VibeSkua Manager V{ClientFileSources.DisplayVersion}";
+        _title = System.OperatingSystem.IsMacOS()
+            ? $"Skua Manager {ClientFileSources.DisplayVersion}"
+            : $"VibeSkua Manager V{ClientFileSources.DisplayVersion}";
     }
 
     [ObservableProperty]

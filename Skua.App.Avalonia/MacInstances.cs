@@ -6,6 +6,7 @@ using Avalonia.Input;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 
 namespace Skua.App.Avalonia;
 
@@ -47,7 +48,14 @@ internal static class MacInstances
         menu.Items.Add(settings);
         menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(newWindow);
+        if (File.Exists(ManagerPath))
+        {
+            NativeMenuItem manager = new("Account Manager...");
+            manager.Click += (_, _) => OpenManager();
+            menu.Items.Add(manager);
+        }
         menu.Items.Add(CreateEngineMenu());
+        menu.Items.Add(MacNotifications.CreateMenu());
         NativeMenu.SetMenu(app, menu);
     }
 
@@ -138,6 +146,37 @@ internal static class MacInstances
     }
 
     /// <summary>Starts another copy of the app (Finder would only switch to the running one).</summary>
+    // Skua Manager (accounts, groups, launching bots logged in) is built into the same folder as the client.
+    private static string ManagerPath => Path.Combine(AppContext.BaseDirectory, "VibeSkua.Manager");
+
+    /// <summary>Skua Mac menu > Account Manager: brings the running Manager to the front, or starts it.</summary>
+    private static void OpenManager()
+    {
+        try
+        {
+            Process? running = Process.GetProcessesByName("VibeSkua.Manager").FirstOrDefault();
+            if (running is not null)
+            {
+                IntPtr app = SendPtrInt(objc_getClass("NSRunningApplication"),
+                    sel_registerName("runningApplicationWithProcessIdentifier:"), running.Id);
+                if (app != IntPtr.Zero)
+                    SendPtrNUInt(app, sel_registerName("activateWithOptions:"), 2); // NSApplicationActivateAllWindows
+                return;
+            }
+            Process.Start(new ProcessStartInfo(ManagerPath) { UseShellExecute = false })?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Could not open the Account Manager: {ex.Message}");
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
+    private static extern IntPtr SendPtrInt(IntPtr receiver, IntPtr selector, int value);
+
+    [System.Runtime.InteropServices.DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
+    private static extern bool SendPtrNUInt(IntPtr receiver, IntPtr selector, nuint value);
+
     public static void LaunchNewInstance()
     {
         try
