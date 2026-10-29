@@ -8,10 +8,9 @@
 
 1. **Download** the latest `Skua-Mac-….dmg` from the [Releases page](https://github.com/NMTOKA/Skua-Mac/releases/latest).
 2. **Open the file** and drag **Skua Mac** onto the **Applications** folder.
-3. **Install the [Artix Game Launcher](https://www.artix.com/downloads/artixlauncher/)** if you don't have it. It's free, and Skua Mac uses its Flash player.
-4. **Open Skua Mac** from Applications. The first time, macOS will say it can't check the app because it isn't from the App Store. Click **Done**, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Skua Mac. You only do this once.
-5. If Skua Mac offers to **install Rosetta**, click **Yes**. If macOS asks to let it **find devices on your local network**, click **Allow**. Both are one-time.
-6. **Log in** in the game window under the Skua Mac bar, then use the menus on the bar (Scripts, Options, Tools…) to run the bot.
+3. **Open Skua Mac** from Applications. The first time, macOS will say it can't check the app because it isn't from the App Store. Click **Done**, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Skua Mac. You only do this once.
+4. If macOS asks to let it **find devices on your local network**, click **Allow**. This is one-time.
+5. **Log in** in the game window under the Skua Mac bar, then use the menus on the bar (Scripts, Options, Tools…) to run the bot.
 
 ## Running more than one bot
 
@@ -34,8 +33,8 @@ Skua Mac checks for a new version once a day and asks if you want to download it
 
 ## If something goes wrong
 
-- **The game window never appears.** Make sure the Artix Game Launcher is in your Applications folder and that you allowed Rosetta. Then quit and reopen Skua Mac.
-- **"Skua Mac is damaged" or it won't open.** Do the Open Anyway step in Install step 4. If that option is missing, open the Terminal app and run `xattr -dr com.apple.quarantine "/Applications/Skua Mac.app"`, then try again.
+- **The game window never appears.** Quit and reopen Skua Mac. If you switched to the Flash engine (**Skua Mac** menu > **Game Engine**), it also needs the [Artix Game Launcher](https://www.artix.com/downloads/artixlauncher/) in Applications and Rosetta.
+- **"Skua Mac is damaged" or it won't open.** Do the Open Anyway step in Install step 3. If that option is missing, open the Terminal app and run `xattr -dr com.apple.quarantine "/Applications/Skua Mac.app"`, then try again.
 - **The game window keeps closing.** Skua Mac restarts it once by itself if it closes while loading. If it keeps happening, please report it on the Issues page and attach `~/Library/Logs/Skua Mac/game-window.log` (in Finder: Go > Go to Folder, then paste that path).
 - **A button shows "Something went wrong".** The bot keeps running. Details are saved in `crash.txt` inside the app; please report it on the Issues page.
 
@@ -45,7 +44,7 @@ Want to build it yourself or see how it works? See [README-macOS.md](README-macO
 
 ## What was changed to make it work on Mac
 
-**Running the game.** VibeSkua shows the game through Windows' ActiveX Flash control, which doesn't exist on macOS. Skua Mac runs the game in a small Electron window with PepperFlash, the same setup the official Artix Game Launcher uses on Mac (its Flash player is borrowed from your launcher install). A local bridge (`FlashUtil.Unix.cs` + `Skua.FlashHost`) connects the bot to the game and matches the Windows behaviour exactly, so scripts and the bot core don't need changes. Each game call takes about 0.4 ms.
+**Running the game.** VibeSkua shows the game through Windows' ActiveX Flash control, which doesn't exist on macOS. Skua Mac runs the game in [Ruffle](https://ruffle.rs), a Flash emulator, inside a native Apple Silicon window (`Skua.RuffleHost`). The original Flash engine is still available under **Skua Mac** menu > **Game Engine**: a small Electron window with PepperFlash, the same setup the official Artix Game Launcher uses on Mac (its Flash player is borrowed from your launcher install). A local bridge (`FlashUtil.Unix.cs` + `Skua.FlashHost`) connects the bot to the game and matches the Windows behaviour exactly, so scripts and the bot core don't need changes. Each game call takes about 0.4 ms.
 
 **One window.** The Skua Mac bar shrinks to its title and menus, and the game window docks underneath it and moves, resizes and minimizes with it. Headless mode hides the game, hotkeys work from either window, Discord screenshots come from the game window, and a closed or crashed game window can be reopened. For multiple accounts, open the app again; each copy gets its own game profile, and the Army menu controls them all (each copy listens on a private local socket instead of the Windows window messages).
 

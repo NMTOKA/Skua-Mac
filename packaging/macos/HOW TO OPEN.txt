@@ -3,11 +3,7 @@ SKUA MAC - HOW TO INSTALL AND OPEN
 
 1. Drag "Skua Mac" onto the Applications folder in this window.
 
-2. Install the free Artix Game Launcher if you don't have it yet:
-   https://www.artix.com/downloads/artixlauncher/
-   (Skua Mac uses its Flash player.)
-
-3. Open Skua Mac from your Applications folder.
+2. Open Skua Mac from your Applications folder.
 
    The first time, macOS will say it can't check Skua Mac for malicious
    software, because it isn't from the App Store. To open it anyway:
@@ -17,11 +13,10 @@ SKUA MAC - HOW TO INSTALL AND OPEN
      - Enter your Mac password if asked, then click "Open Anyway" again.
    You only need to do this once.
 
-4. If Skua Mac offers to install Rosetta, click Yes. It takes about a minute,
-   once. If macOS asks to let Skua Mac find devices on your local network,
+3. If macOS asks to let Skua Mac find devices on your local network,
    click Allow (the bot and the game window talk over a local connection).
 
-5. Log in from the game window under the Skua Mac bar.
+4. Log in from the game window under the Skua Mac bar.
 
 MORE BOTS: in the Skua Mac menu at the top of the screen, choose
 "New Skua Window" (or press Command+N). Each window is its own bot.

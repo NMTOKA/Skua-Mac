@@ -75,8 +75,8 @@ internal static class MacInstances
     private static NativeMenuItem CreateEngineMenu()
     {
         bool ruffleNow = Flash.FlashUtil.UseRuffle;
-        NativeMenuItem flash = new("Flash") { ToggleType = NativeMenuItemToggleType.Radio, IsChecked = !ruffleNow };
-        NativeMenuItem ruffle = new("Ruffle (needed on macOS 28)") { ToggleType = NativeMenuItemToggleType.Radio, IsChecked = ruffleNow };
+        NativeMenuItem flash = new("Flash (needs Rosetta and the Artix Game Launcher)") { ToggleType = NativeMenuItemToggleType.Radio, IsChecked = !ruffleNow };
+        NativeMenuItem ruffle = new("Ruffle") { ToggleType = NativeMenuItemToggleType.Radio, IsChecked = ruffleNow };
         flash.Click += (_, _) => ChooseEngine(useRuffle: false, flash, ruffle);
         ruffle.Click += (_, _) => ChooseEngine(useRuffle: true, flash, ruffle);
 

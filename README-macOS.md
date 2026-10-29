@@ -6,11 +6,11 @@ Tested on macOS 27: the game loads to the login screen, and calls and events flo
 
 > **macOS 28 warning:** macOS 27 shows *"This version of Electron includes a component that will not open in
 > macOS 28."* PepperFlash and Electron 8 are Intel-only and run through Rosetta. The Ruffle game host (below)
-> is the replacement; it is the default from macOS 28 on.
+> is the replacement and the default.
 
 ## Game engine: Flash (Electron) or Ruffle
 
-| | Flash (`Skua.FlashHost`) | Ruffle (`Skua.RuffleHost`, beta) |
+| | Flash (`Skua.FlashHost`) | Ruffle (`Skua.RuffleHost`, default) |
 |---|---|---|
 | What runs the game | Electron 8 + PepperFlash, x64 under Rosetta | [Ruffle](https://ruffle.rs) 0.7.1 (Flash emulator, WebAssembly) in a native arm64 WKWebView |
 | Needs | Rosetta, Artix Game Launcher | nothing extra |
@@ -23,7 +23,7 @@ the word in the file the menu writes:
 echo ruffle > ~/Library/Application\ Support/VibeSkua/game-engine
 ```
 
-Without a choice, Skua Mac uses Flash up to macOS 27 and Ruffle from macOS 28 on. The bot sees no difference: both
+Without a choice, Skua Mac uses Ruffle (before 2.3.2 it used Flash up to macOS 27). The bot sees no difference: both
 hosts speak the same bridge protocol.
 
 How the Ruffle host works: `SkuaRuffleHost` (`RuffleHost.swift`) is a small AppKit app with one WKWebView. It serves
@@ -57,9 +57,10 @@ Known differences under Ruffle:
 - **.NET 10 SDK**. The official installer, or `dotnet-install.sh --channel 10.0` into `~/.dotnet`
   (then `export DOTNET_ROOT=$HOME/.dotnet`).
 - **Node.js**, to install the Electron host.
-- **Rosetta 2**: `softwareupdate --install-rosetta --agree-to-license`
-- **Artix Game Launcher** in `/Applications`. Its `PepperFlashPlayer.plugin` is used at runtime and is not
-  redistributed here. Override the path with `SKUA_PPAPI=/path/to/PepperFlashPlayer.plugin`.
+- Only to run the Flash engine (Ruffle, the default, needs neither):
+  - **Rosetta 2**: `softwareupdate --install-rosetta --agree-to-license`
+  - **Artix Game Launcher** in `/Applications`. Its `PepperFlashPlayer.plugin` is used at runtime and is not
+    redistributed here. Override the path with `SKUA_PPAPI=/path/to/PepperFlashPlayer.plugin`.
 - Java (optional, only for map item parsing via FFDec).
 
 ## Build the app

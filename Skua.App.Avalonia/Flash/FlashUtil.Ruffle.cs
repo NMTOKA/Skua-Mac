@@ -18,7 +18,8 @@ public partial class FlashUtil
 {
     /// <summary>
     /// Whether the game runs in Ruffle instead of Electron + PepperFlash. SKUA_GAME_ENGINE=ruffle|flash, or the same
-    /// word in ~/Library/Application Support/VibeSkua/game-engine, chooses; otherwise Ruffle from macOS 28 on.
+    /// word in ~/Library/Application Support/VibeSkua/game-engine, chooses; otherwise Ruffle, which needs no Rosetta or
+    /// Artix Game Launcher.
     /// </summary>
     public static bool UseRuffle { get; } = ResolveUseRuffle();
 
@@ -40,7 +41,7 @@ public partial class FlashUtil
         {
             "ruffle" => true,
             "flash" => false,
-            _ => OperatingSystem.IsMacOSVersionAtLeast(28),
+            _ => true,
         };
     }
 
