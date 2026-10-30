@@ -1,4 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Messaging;
 using Skua.Core.Messaging;
@@ -40,6 +43,19 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(WindowClosingEventArgs e)
     {
+        // On macOS there's no tray to come back from, so closing the window (or Quit) quits the Manager.
+        if (OperatingSystem.IsMacOS() && !_allowClose)
+        {
+            _allowClose = true;
+            if (e.CloseReason != WindowCloseReason.ApplicationShutdown
+                && Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                e.Cancel = true;
+                Dispatcher.UIThread.Post(() => desktop.Shutdown());
+                return;
+            }
+        }
+
         if (!_allowClose)
         {
             e.Cancel = true;

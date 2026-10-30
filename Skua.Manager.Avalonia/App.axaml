@@ -10,6 +10,7 @@
              xmlns:sharedScriptRepo="clr-namespace:Skua.Shared.Avalonia.Controls.ScriptRepo;assembly=Skua.Shared.Avalonia"
              xmlns:views="clr-namespace:Skua.Manager.Avalonia.Views"
              x:Class="Skua.Manager.Avalonia.App"
+             Name="Skua Manager"
              RequestedThemeVariant="Dark">
     <Application.Resources>
         <ResourceDictionary>

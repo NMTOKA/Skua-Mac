@@ -48,6 +48,8 @@ public class WindowService : IWindowService
                 window.CanResize = vm.CanResize;
                 window.Closing += (_, e) =>
                 {
+                    if (e.CloseReason == WindowCloseReason.ApplicationShutdown)
+                        return;
                     e.Cancel = true;
                     window.Hide();
                     if (window.DataContext is ObservableRecipient recipient)
@@ -78,6 +80,8 @@ public class WindowService : IWindowService
         window.CanResize = viewModel.CanResize;
         window.Closing += (_, e) =>
         {
+            if (e.CloseReason == WindowCloseReason.ApplicationShutdown)
+                return;
             e.Cancel = true;
             window.Hide();
             if (window.DataContext is ObservableRecipient recipient)
