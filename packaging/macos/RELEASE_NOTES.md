@@ -5,6 +5,7 @@ A native macOS version of the AQW bot client [VibeSkua](https://github.com/Ninja
 
 ### New in this version
 
+- **Fixed (2.4.1):** Skua Manager couldn't be closed. Closing its window or choosing Quit now exits it.
 - **Account Manager:** Skua Mac menu > **Account Manager...** opens Skua Manager, where you can save accounts, put
   them in groups and start bots already logged in, with a script if you want.
 - **Notifications:** get a Mac notification when a script stops or crashes, or your character dies. They only show
