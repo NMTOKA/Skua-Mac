@@ -20,6 +20,9 @@ internal sealed class MacMenuBar
     private static Menu? _source;
     private static bool _watchingWindows;
 
+    // The one menu each window gets (see Apply).
+    private static readonly ConditionalWeakTable<Window, NativeMenu> Menus = new();
+
     // One native copy per bar item, reused when a submenu is rebuilt.
     private readonly ConditionalWeakTable<MenuItem, NativeMenuItem> _mirrors = new();
 
@@ -40,17 +43,26 @@ internal sealed class MacMenuBar
 
     private static void Apply(Window window)
     {
-        if (_source is not null)
-            NativeMenu.SetMenu(window, new MacMenuBar().Mirror(_source));
+        if (_source is null)
+            return;
+
+        // A window keeps its first menu: Avalonia's macOS exporter throws "The menu being updated does not match"
+        // when a window that already has one (a tool window shown again, or the bar rebuilt) gets a new one.
+        if (!Menus.TryGetValue(window, out NativeMenu? menu))
+        {
+            menu = new NativeMenu();
+            Menus.Add(window, menu);
+            NativeMenu.SetMenu(window, menu);
+        }
+        new MacMenuBar().Fill(menu, _source);
     }
 
-    private NativeMenu Mirror(Menu source)
+    private void Fill(NativeMenu menu, Menu source)
     {
-        NativeMenu menu = new();
+        menu.Items.Clear();
         foreach (object? item in source.Items)
             if (item is MenuItem menuItem)
                 menu.Items.Add(MirrorItem(menuItem));
-        return menu;
     }
 
     private NativeMenuItemBase MirrorItem(MenuItem source)

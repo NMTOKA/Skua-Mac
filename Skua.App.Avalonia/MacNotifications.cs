@@ -210,6 +210,9 @@ internal static class MacNotifications
     {
         if (_center != IntPtr.Zero)
             return _center;
+        // UserNotifications aborts the process outside an app bundle (a development build run from bin/).
+        if (!AppContext.BaseDirectory.Contains(".app/Contents/", StringComparison.Ordinal))
+            return IntPtr.Zero;
         dlopen("/System/Library/Frameworks/UserNotifications.framework/UserNotifications", 1);
         _center = Send(objc_getClass("UNUserNotificationCenter"), sel_registerName("currentNotificationCenter"));
         return _center;
