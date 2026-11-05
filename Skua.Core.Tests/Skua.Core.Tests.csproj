@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Skua.Core\Skua.Core.csproj" />
+    <ProjectReference Include="..\Skua.Core.Utils\Skua.Core.Utils.csproj" />
   </ItemGroup>
 
 </Project>

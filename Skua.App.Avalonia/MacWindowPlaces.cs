@@ -24,6 +24,8 @@ internal static class MacWindowPlaces
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VibeSkua", "window-places.json");
 
     private static readonly object FileLock = new();
+    private static Dictionary<string, Place>? _cache;
+    private static DateTime _cacheFileWriteUtc;
 
     /// <summary>The spot for this copy's bar: "main-1" for the first running Skua Mac, "main-2" for the next, ...</summary>
     public static string MainKey { get; } = $"main-{RunningCopiesBeforeThis() + 1}";
@@ -31,7 +33,7 @@ internal static class MacWindowPlaces
     public static Place? Get(string key)
     {
         lock (FileLock)
-            return Load().TryGetValue(key, out Place? place) ? place : null;
+            return LoadCached().TryGetValue(key, out Place? place) ? place : null;
     }
 
     public static void Save(string key, Window window)
@@ -44,11 +46,13 @@ internal static class MacWindowPlaces
         {
             lock (FileLock)
             {
-                // Other copies write their own keys; reread so their spots are kept.
-                Dictionary<string, Place> places = Load();
+                // Other copies write their own keys; reload when the file changed on disk.
+                Dictionary<string, Place> places = LoadCached();
                 places[key] = place;
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
                 File.WriteAllText(FilePath, JsonSerializer.Serialize(places));
+                _cache = places;
+                _cacheFileWriteUtc = File.GetLastWriteTimeUtc(FilePath);
             }
         }
         catch (Exception ex)
@@ -88,15 +92,34 @@ internal static class MacWindowPlaces
         return screens.Any(s => s.WorkingArea.Contains(titleBar.TopLeft) && s.WorkingArea.Contains(titleBar.BottomRight));
     }
 
-    private static Dictionary<string, Place> Load()
+    private static Dictionary<string, Place> LoadCached()
     {
         try
         {
-            if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<Dictionary<string, Place>>(File.ReadAllText(FilePath)) ?? new();
+            if (!File.Exists(FilePath))
+            {
+                _cache = new();
+                _cacheFileWriteUtc = DateTime.MinValue;
+                return _cache;
+            }
+
+            DateTime writeUtc = File.GetLastWriteTimeUtc(FilePath);
+            if (_cache is not null && writeUtc == _cacheFileWriteUtc)
+                return _cache;
+
+            Dictionary<string, Place> places =
+                JsonSerializer.Deserialize<Dictionary<string, Place>>(File.ReadAllText(FilePath)) ?? new();
+            _cache = places;
+            _cacheFileWriteUtc = writeUtc;
+            return places;
         }
-        catch { /* a damaged file just means default positions */ }
-        return new();
+        catch
+        {
+            // A damaged file just means default positions.
+            _cache = new();
+            _cacheFileWriteUtc = DateTime.MinValue;
+            return _cache;
+        }
     }
 
     private static int RunningCopiesBeforeThis()

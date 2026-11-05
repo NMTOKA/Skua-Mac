@@ -2,7 +2,7 @@
 
 public class TimeLimiter
 {
-    private Dictionary<string, int> _last = new();
+    private readonly Dictionary<string, int> _last = new();
     private const int MaxCacheSize = 1000; // Reasonable limit for cache size
     private const int CleanupThreshold = 5 * 60 * 1000; // 5 minutes in milliseconds
 
@@ -17,9 +17,7 @@ public class TimeLimiter
     {
         // Perform periodic cleanup to prevent unbounded growth
         if (_last.Count > MaxCacheSize)
-        {
             CleanupOldEntries();
-        }
 
         bool run = !_last.TryGetValue(name, out int time) || Environment.TickCount - time >= delay;
         if (run)
@@ -36,14 +34,21 @@ public class TimeLimiter
     private void CleanupOldEntries()
     {
         int currentTick = Environment.TickCount;
+        List<string>? keysToRemove = null;
 
-        string[] keysToRemove = _last.Where(kvp => currentTick - kvp.Value > CleanupThreshold)
-                                     .Select(kvp => kvp.Key)
-                                     .ToArray();
-
-        foreach (string key in keysToRemove)
+        foreach (KeyValuePair<string, int> kvp in _last)
         {
-            _last.Remove(key);
+            if (currentTick - kvp.Value <= CleanupThreshold)
+                continue;
+
+            keysToRemove ??= new List<string>();
+            keysToRemove.Add(kvp.Key);
         }
+
+        if (keysToRemove is null)
+            return;
+
+        for (int i = 0; i < keysToRemove.Count; i++)
+            _last.Remove(keysToRemove[i]);
     }
 }

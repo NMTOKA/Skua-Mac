@@ -29,7 +29,7 @@ jobs:
       - name: Build manager
         run: dotnet build Skua.Manager.Avalonia/Skua.Manager.Avalonia.csproj -c Release
 
-      - name: Test bundled script install
+      - name: Test core
         run: dotnet test Skua.Core.Tests/Skua.Core.Tests.csproj -c Release --nologo
 
       - name: Check Flash host scripts

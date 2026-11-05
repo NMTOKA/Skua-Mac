@@ -8,6 +8,7 @@ using Skua.Core.Interfaces;
 using Skua.Core.Messaging;
 using Skua.Core.Utils;
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Dynamic;
@@ -339,7 +340,7 @@ public partial class FlashUtil : IFlashUtil
         {
             string function = ev.ToString();
             string arg = msg.Value<string>("a") ?? string.Empty;
-            object[] args = { UseRuffle ? NormalizeRuffleNumbers(arg)! : arg };
+            object[] args = { UseRuffle ? RuffleJson.NormalizeNumbers(arg)! : arg };
             if (function == "loaded")
             {
                 _hostLoaded = true;
@@ -430,7 +431,8 @@ public partial class FlashUtil : IFlashUtil
 
         try
         {
-            string request = JsonConvert.SerializeObject(new { id, fn = function, args });
+            // Manual JSON for the common path: SerializeObject + an anonymous type was allocating on every game call.
+            string request = FlashCallJson.Build(id, function, args);
             Send(socket, request);
 
             if (!tcs.Task.Wait(CallTimeout))
@@ -442,12 +444,11 @@ public partial class FlashUtil : IFlashUtil
 
             string? text = ToWindowsReturnText(reply["r"]);
             if (UseRuffle)
-                text = NormalizeRuffleNumbers(text);
+                text = RuffleJson.NormalizeNumbers(text);
             if (text is null)
                 return default!;
 
-            object? value = Convert.ChangeType(text, type);
-            return value ?? default!;
+            return ConvertResult(text, type) ?? default!;
         }
         catch (Exception e)
         {
@@ -459,6 +460,34 @@ public partial class FlashUtil : IFlashUtil
         {
             _pending.TryRemove(id, out _);
         }
+    }
+
+    private static object? ConvertResult(string text, Type type)
+    {
+        if (type == typeof(string) || type == typeof(object))
+            return text;
+        if (type == typeof(bool))
+            return text.Equals("true", StringComparison.OrdinalIgnoreCase) || text == "1";
+        if (type == typeof(int))
+            return int.Parse(text, CultureInfo.InvariantCulture);
+        if (type == typeof(long))
+            return long.Parse(text, CultureInfo.InvariantCulture);
+        if (type == typeof(float))
+            return float.Parse(text, CultureInfo.InvariantCulture);
+        if (type == typeof(double))
+            return double.Parse(text, CultureInfo.InvariantCulture);
+        if (type == typeof(decimal))
+            return decimal.Parse(text, CultureInfo.InvariantCulture);
+
+        Type underlying = Nullable.GetUnderlyingType(type) ?? type;
+        if (underlying != type)
+        {
+            if (string.IsNullOrEmpty(text) || text.Equals("null", StringComparison.OrdinalIgnoreCase))
+                return null;
+            return ConvertResult(text, underlying);
+        }
+
+        return Convert.ChangeType(text, type, CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -478,15 +507,25 @@ public partial class FlashUtil : IFlashUtil
 
     private void Send(WebSocket socket, string text)
     {
-        byte[] bytes = Encoding.UTF8.GetBytes(text);
-        _sendLock.Wait();
+        int maxBytes = Encoding.UTF8.GetMaxByteCount(text.Length);
+        byte[] rented = ArrayPool<byte>.Shared.Rent(maxBytes);
         try
         {
-            socket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None).GetAwaiter().GetResult();
+            int count = Encoding.UTF8.GetBytes(text, 0, text.Length, rented, 0);
+            _sendLock.Wait();
+            try
+            {
+                socket.SendAsync(new ArraySegment<byte>(rented, 0, count), WebSocketMessageType.Text, true, CancellationToken.None)
+                    .GetAwaiter().GetResult();
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
         }
         finally
         {
-            _sendLock.Release();
+            ArrayPool<byte>.Shared.Return(rented);
         }
     }
 

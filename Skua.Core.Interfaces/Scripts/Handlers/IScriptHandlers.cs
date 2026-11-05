@@ -13,9 +13,9 @@
 public interface IScriptHandlers
 {
     /// <summary>
-    /// A list holding currently registered handlers.
+    /// Currently registered handlers. Prefer reading this list directly; do not copy it every timer tick.
     /// </summary>
-    IEnumerable<IHandler> CurrentHandlers { get; }
+    IReadOnlyList<IHandler> CurrentHandlers { get; }
 
     /// <summary>
     /// Register an <paramref name="function"/> to be executed every time the specified number of <paramref name="ticks"/> has passed. A tick is 20ms.

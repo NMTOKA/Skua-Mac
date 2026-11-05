@@ -9,9 +9,12 @@ public class Handler : IHandler
         Name = name;
         Ticks = ticks;
         Function = function;
+        // Built once: the bot timer used to allocate "handler_" + Name on every 20 ms tick.
+        LimitKey = "handler_" + name;
     }
 
     public string Name { get; }
     public int Ticks { get; }
     public Func<IScriptInterface, bool> Function { get; }
+    internal string LimitKey { get; }
 }

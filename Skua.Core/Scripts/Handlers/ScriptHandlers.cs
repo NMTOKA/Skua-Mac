@@ -4,8 +4,8 @@ namespace Skua.Core.Scripts;
 
 public class ScriptHandlers : IScriptHandlers
 {
-    private List<IHandler> _currentHandlers = new();
-    public IEnumerable<IHandler> CurrentHandlers => _currentHandlers;
+    private readonly List<IHandler> _currentHandlers = new();
+    public IReadOnlyList<IHandler> CurrentHandlers => _currentHandlers;
     private volatile int _iHandler;
 
     public IHandler RegisterHandler(int ticks, Func<IScriptInterface, bool> function, string? name = null!)
@@ -28,7 +28,11 @@ public class ScriptHandlers : IScriptHandlers
 
     public bool Remove(List<IHandler> handlers)
     {
-        return _currentHandlers.RemoveAll(h => handlers.Contains(h)) == handlers.Count;
+        if (handlers.Count == 0)
+            return true;
+
+        HashSet<IHandler> toRemove = new(handlers);
+        return _currentHandlers.RemoveAll(toRemove.Contains) == handlers.Count;
     }
 
     public void Clear()
