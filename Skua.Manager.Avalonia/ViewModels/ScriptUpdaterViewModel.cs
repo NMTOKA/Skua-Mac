@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Skua.Core.Interfaces;
 using Skua.Core.Messaging;
 using Skua.Core.Models;
+using Skua.Core.Services;
 using Skua.Shared.Avalonia.ViewModels;
 using System;
 using System.IO;
@@ -138,6 +139,8 @@ public partial class ScriptUpdaterViewModel : BotControlViewModelBase
         }
         finally
         {
+            // Reset deletes the whole Scripts folder, including UltrasLW. Put the bundled copy back.
+            ClientFilesService.InstallBundledUltrasLW();
             await Task.Delay(1000);
             IsBusy = false;
             ProgressStatus = null;
