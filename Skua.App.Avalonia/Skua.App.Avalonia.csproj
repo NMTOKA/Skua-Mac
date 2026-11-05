@@ -51,6 +51,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Skua.Core.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\Skua.Core\Skua.Core.csproj" />
         <ProjectReference Include="..\Skua.Core.Interfaces\Skua.Core.Interfaces.csproj" />
         <ProjectReference Include="..\Skua.Core.Models\Skua.Core.Models.csproj" />

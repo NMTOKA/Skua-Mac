@@ -342,9 +342,21 @@ public partial class MainWindow
     private static readonly string CpuSaverFile = System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VibeSkua", "save-cpu-background");
 
+    private static bool _cpuSaverCached;
+    private static long _cpuSaverCheckedAt;
+
     private static bool CpuSaverEnabled
     {
-        get => System.IO.File.Exists(CpuSaverFile);
+        get
+        {
+            // The CPU-saver timer ticks every second; avoid a disk Exists check on every tick.
+            long now = Environment.TickCount64;
+            if (now - _cpuSaverCheckedAt < 1000)
+                return _cpuSaverCached;
+
+            _cpuSaverCheckedAt = now;
+            return _cpuSaverCached = System.IO.File.Exists(CpuSaverFile);
+        }
         set
         {
             try
@@ -355,6 +367,9 @@ public partial class MainWindow
                     System.IO.File.Delete(CpuSaverFile);
             }
             catch { }
+
+            _cpuSaverCached = value;
+            _cpuSaverCheckedAt = Environment.TickCount64;
         }
     }
 

@@ -8,6 +8,7 @@ using Skua.Core.Models;
 using Skua.Core.Models.Items;
 using Skua.Core.Threading;
 using Skua.Core.Utils;
+using System.Buffers;
 using System.Diagnostics;
 
 namespace Skua.Core.Scripts;
@@ -437,18 +438,38 @@ public class ScriptInterface : IScriptInterface, IScriptInterfaceManager, IDispo
     /// </summary>
     private void RunScriptHandlers()
     {
-        if (Handlers.CurrentHandlers.ToList().Count == 0)
+        // One rented snapshot. The old path called ToList() twice every 20 ms while a script was running.
+        IReadOnlyList<IHandler> live = Handlers.CurrentHandlers;
+        int count = live.Count;
+        if (count == 0)
             return;
-        List<IHandler> rem = [];
-        foreach (IHandler handler in Handlers.CurrentHandlers.ToList())
+
+        IHandler[] handlers = ArrayPool<IHandler>.Shared.Rent(count);
+        try
         {
-            _limit.LimitedRun("handler_" + handler.Name, handler.Ticks * _timerDelay, () =>
+            for (int i = 0; i < count; i++)
+                handlers[i] = live[i];
+
+            List<IHandler>? rem = null;
+            for (int i = 0; i < count; i++)
             {
-                if (!handler.Function(this))
-                    rem.Add(handler);
-            });
+                IHandler handler = handlers[i];
+                string key = handler is Handler concrete ? concrete.LimitKey : "handler_" + handler.Name;
+                _limit.LimitedRun(key, handler.Ticks * _timerDelay, () =>
+                {
+                    if (!handler.Function(this))
+                        (rem ??= new List<IHandler>()).Add(handler);
+                });
+            }
+
+            if (rem is { Count: > 0 })
+                Handlers.Remove(rem);
         }
-        Handlers.Remove(rem);
+        finally
+        {
+            Array.Clear(handlers, 0, count);
+            ArrayPool<IHandler>.Shared.Return(handlers);
+        }
     }
 
     private void HandleFlashCall(string name, object[]? args)

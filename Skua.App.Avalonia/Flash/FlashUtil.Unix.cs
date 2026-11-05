@@ -8,6 +8,7 @@ using Skua.Core.Interfaces;
 using Skua.Core.Messaging;
 using Skua.Core.Utils;
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Dynamic;
@@ -430,7 +431,8 @@ public partial class FlashUtil : IFlashUtil
 
         try
         {
-            string request = JsonConvert.SerializeObject(new { id, fn = function, args });
+            // Manual JSON for the common path: SerializeObject + an anonymous type was allocating on every game call.
+            string request = BuildCallJson(id, function, args);
             Send(socket, request);
 
             if (!tcs.Task.Wait(CallTimeout))
@@ -446,8 +448,7 @@ public partial class FlashUtil : IFlashUtil
             if (text is null)
                 return default!;
 
-            object? value = Convert.ChangeType(text, type);
-            return value ?? default!;
+            return ConvertResult(text, type) ?? default!;
         }
         catch (Exception e)
         {
@@ -459,6 +460,136 @@ public partial class FlashUtil : IFlashUtil
         {
             _pending.TryRemove(id, out _);
         }
+    }
+
+    /// <summary>
+    /// Builds <c>{"id":n,"fn":"name","args":[...]}</c> without Newtonsoft for the usual primitive arguments.
+    /// Falls back to <see cref="JsonConvert.SerializeObject"/> only for uncommon argument types.
+    /// </summary>
+    internal static string BuildCallJson(int id, string function, object[] args)
+    {
+        StringBuilder sb = new(64 + function.Length + (args.Length * 16));
+        sb.Append("{\"id\":").Append(id).Append(",\"fn\":");
+        AppendJsonString(sb, function);
+        sb.Append(",\"args\":[");
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (i > 0)
+                sb.Append(',');
+            AppendJsonValue(sb, args[i]);
+        }
+        sb.Append("]}");
+        return sb.ToString();
+    }
+
+    private static void AppendJsonValue(StringBuilder sb, object? value)
+    {
+        switch (value)
+        {
+            case null:
+                sb.Append("null");
+                break;
+            case string s:
+                AppendJsonString(sb, s);
+                break;
+            case bool b:
+                sb.Append(b ? "true" : "false");
+                break;
+            case int i:
+                sb.Append(i.ToString(CultureInfo.InvariantCulture));
+                break;
+            case long l:
+                sb.Append(l.ToString(CultureInfo.InvariantCulture));
+                break;
+            case float f:
+                sb.Append(f.ToString("R", CultureInfo.InvariantCulture));
+                break;
+            case double d:
+                sb.Append(d.ToString("R", CultureInfo.InvariantCulture));
+                break;
+            case decimal m:
+                sb.Append(m.ToString(CultureInfo.InvariantCulture));
+                break;
+            case Enum e:
+                AppendJsonString(sb, e.ToString());
+                break;
+            default:
+                sb.Append(JsonConvert.SerializeObject(value));
+                break;
+        }
+    }
+
+    private static void AppendJsonString(StringBuilder sb, string value)
+    {
+        sb.Append('"');
+        for (int i = 0; i < value.Length; i++)
+        {
+            char c = value[i];
+            switch (c)
+            {
+                case '"':
+                    sb.Append("\\\"");
+                    break;
+                case '\\':
+                    sb.Append("\\\\");
+                    break;
+                case '\b':
+                    sb.Append("\\b");
+                    break;
+                case '\f':
+                    sb.Append("\\f");
+                    break;
+                case '\n':
+                    sb.Append("\\n");
+                    break;
+                case '\r':
+                    sb.Append("\\r");
+                    break;
+                case '\t':
+                    sb.Append("\\t");
+                    break;
+                default:
+                    if (c < 0x20)
+                    {
+                        sb.Append("\\u");
+                        sb.Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+                    break;
+            }
+        }
+        sb.Append('"');
+    }
+
+    private static object? ConvertResult(string text, Type type)
+    {
+        if (type == typeof(string) || type == typeof(object))
+            return text;
+        if (type == typeof(bool))
+            return text.Equals("true", StringComparison.OrdinalIgnoreCase) || text == "1";
+        if (type == typeof(int))
+            return int.Parse(text, CultureInfo.InvariantCulture);
+        if (type == typeof(long))
+            return long.Parse(text, CultureInfo.InvariantCulture);
+        if (type == typeof(float))
+            return float.Parse(text, CultureInfo.InvariantCulture);
+        if (type == typeof(double))
+            return double.Parse(text, CultureInfo.InvariantCulture);
+        if (type == typeof(decimal))
+            return decimal.Parse(text, CultureInfo.InvariantCulture);
+
+        Type underlying = Nullable.GetUnderlyingType(type) ?? type;
+        if (underlying != type)
+        {
+            if (string.IsNullOrEmpty(text) || text.Equals("null", StringComparison.OrdinalIgnoreCase))
+                return null;
+            return ConvertResult(text, underlying);
+        }
+
+        return Convert.ChangeType(text, type, CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -478,15 +609,25 @@ public partial class FlashUtil : IFlashUtil
 
     private void Send(WebSocket socket, string text)
     {
-        byte[] bytes = Encoding.UTF8.GetBytes(text);
-        _sendLock.Wait();
+        int maxBytes = Encoding.UTF8.GetMaxByteCount(text.Length);
+        byte[] rented = ArrayPool<byte>.Shared.Rent(maxBytes);
         try
         {
-            socket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None).GetAwaiter().GetResult();
+            int count = Encoding.UTF8.GetBytes(text, 0, text.Length, rented, 0);
+            _sendLock.Wait();
+            try
+            {
+                socket.SendAsync(new ArraySegment<byte>(rented, 0, count), WebSocketMessageType.Text, true, CancellationToken.None)
+                    .GetAwaiter().GetResult();
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
         }
         finally
         {
-            _sendLock.Release();
+            ArrayPool<byte>.Shared.Return(rented);
         }
     }
 
