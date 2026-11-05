@@ -33,6 +33,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Skua.Plugin.ButlerV5", "Sku
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Skua.Compat.WinForms", "Skua.Compat.WinForms\Skua.Compat.WinForms.csproj", "{6C99329E-60E5-4BB1-9A0A-915791A3B878}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Skua.Core.Tests", "Skua.Core.Tests\Skua.Core.Tests.csproj", "{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -170,6 +172,18 @@ Global
 		{6C99329E-60E5-4BB1-9A0A-915791A3B878}.Release|x64.Build.0 = Release|Any CPU
 		{6C99329E-60E5-4BB1-9A0A-915791A3B878}.Release|x86.ActiveCfg = Release|Any CPU
 		{6C99329E-60E5-4BB1-9A0A-915791A3B878}.Release|x86.Build.0 = Release|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Debug|x64.Build.0 = Debug|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Debug|x86.Build.0 = Debug|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Release|x64.ActiveCfg = Release|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Release|x64.Build.0 = Release|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Release|x86.ActiveCfg = Release|Any CPU
+		{F02A11AF-4B60-48F2-99C2-53FCC57F14CB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

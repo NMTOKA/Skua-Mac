@@ -61,16 +61,37 @@ echo "==> Bundling the Ruffle game host"
 echo "==> Bundling UltrasLW"
 # Pinned snapshot of https://github.com/l0newolf12/UltrasLW (the pack the Windows installer downloads).
 # Shipped inside the app. On launch it is copied to ~/Library/Application Support/VibeSkua/Scripts/UltrasLW
-# when that folder is not already there. The scripts are not committed in this repo.
+# when that folder is missing or empty. A folder that already has files is left alone.
+# The scripts are not committed in this repo. The zip bytes from GitHub are not stable, so the check
+# below hashes the file contents.
 ULTRASLW_SHA="2b60a6b8fef31ba3888dc3da1c54b35ead437df2"
+ULTRASLW_TREE_SHA256="92a16bba3bd05f54d709a6d11b918dec9af7869c90eda3ee114b86f706d47243"
 ULTRASLW_ZIP="$STAGE/UltrasLW.zip"
 ULTRASLW_EXTRACT="$STAGE/ultraslw-extract"
-curl -fsSL -L -o "$ULTRASLW_ZIP" "https://github.com/l0newolf12/UltrasLW/archive/${ULTRASLW_SHA}.zip"
+curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors -L \
+  -o "$ULTRASLW_ZIP" "https://github.com/l0newolf12/UltrasLW/archive/${ULTRASLW_SHA}.zip"
 mkdir -p "$ULTRASLW_EXTRACT"
 unzip -q "$ULTRASLW_ZIP" -d "$ULTRASLW_EXTRACT"
-ULTRASLW_SRC="$(find "$ULTRASLW_EXTRACT" -mindepth 1 -maxdepth 1 -type d | head -1)"
-if [ -z "${ULTRASLW_SRC}" ] || [ ! -f "$ULTRASLW_SRC/CoreLoneWolf.cs" ]; then
+dir_count=0
+ULTRASLW_SRC=""
+for extracted in "$ULTRASLW_EXTRACT"/*/; do
+  [ -d "$extracted" ] || continue
+  dir_count=$((dir_count + 1))
+  ULTRASLW_SRC="${extracted%/}"
+done
+if [ "$dir_count" -ne 1 ] || [ ! -f "$ULTRASLW_SRC/CoreLoneWolf.cs" ]; then
   echo "error: UltrasLW archive did not contain the expected scripts" >&2
+  exit 1
+fi
+tree_sha=$(
+  cd "$ULTRASLW_SRC"
+  find . -type f -print | LC_ALL=C sort | while IFS= read -r file; do
+    hash=$(openssl dgst -sha256 "$file" | awk '{print $NF}')
+    printf '%s  %s\n' "$hash" "${file#./}"
+  done | openssl dgst -sha256 | awk '{print $NF}'
+)
+if [ "$tree_sha" != "$ULTRASLW_TREE_SHA256" ]; then
+  echo "error: UltrasLW contents checksum mismatch (got $tree_sha)" >&2
   exit 1
 fi
 mkdir -p "$MACOS/BundledScripts"
