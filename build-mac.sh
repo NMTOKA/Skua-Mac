@@ -58,6 +58,26 @@ ditto "$HOST_SRC/node_modules/electron/dist" "$HOST_DST/node_modules/electron/di
 echo "==> Bundling the Ruffle game host"
 "$ROOT/Skua.RuffleHost/build.sh" "$MACOS/RuffleHost"
 
+echo "==> Bundling UltrasLW"
+# Pinned snapshot of https://github.com/l0newolf12/UltrasLW (the pack the Windows installer downloads).
+# Shipped inside the app. On launch it is copied to ~/Library/Application Support/VibeSkua/Scripts/UltrasLW
+# when that folder is not already there. The scripts are not committed in this repo.
+ULTRASLW_SHA="2b60a6b8fef31ba3888dc3da1c54b35ead437df2"
+ULTRASLW_ZIP="$STAGE/UltrasLW.zip"
+ULTRASLW_EXTRACT="$STAGE/ultraslw-extract"
+curl -fsSL -L -o "$ULTRASLW_ZIP" "https://github.com/l0newolf12/UltrasLW/archive/${ULTRASLW_SHA}.zip"
+mkdir -p "$ULTRASLW_EXTRACT"
+unzip -q "$ULTRASLW_ZIP" -d "$ULTRASLW_EXTRACT"
+ULTRASLW_SRC="$(find "$ULTRASLW_EXTRACT" -mindepth 1 -maxdepth 1 -type d | head -1)"
+if [ -z "${ULTRASLW_SRC}" ] || [ ! -f "$ULTRASLW_SRC/CoreLoneWolf.cs" ]; then
+  echo "error: UltrasLW archive did not contain the expected scripts" >&2
+  exit 1
+fi
+mkdir -p "$MACOS/BundledScripts"
+rm -rf "$MACOS/BundledScripts/UltrasLW"
+cp -R "$ULTRASLW_SRC" "$MACOS/BundledScripts/UltrasLW"
+rm -f "$ULTRASLW_ZIP"
+
 echo "==> Icon"
 ICONSET="$STAGE/VibeSkua.iconset"
 rm -rf "$ICONSET" && mkdir -p "$ICONSET"
