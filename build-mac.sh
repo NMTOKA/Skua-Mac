@@ -61,7 +61,9 @@ echo "==> Bundling the Ruffle game host"
 echo "==> Bundling UltrasLW"
 # Pinned snapshot of https://github.com/l0newolf12/UltrasLW (the pack the Windows installer downloads).
 # Shipped inside the app. On launch it is copied to ~/Library/Application Support/VibeSkua/Scripts/UltrasLW
-# when that folder is missing or empty. A folder that already has files is left alone.
+# when that folder is missing, empty, or still an unedited copy of a pack we installed. Edits are kept.
+# ULTRASLW_TREE_SHA256 is also ClientFilesService.UltrasLW243TreeSha256 while this pin is the 2.4.3 snapshot.
+# When the pin moves, leave that constant in place so 2.4.3 installs with no local edits can still be recognized.
 # The scripts are not committed in this repo. The zip bytes from GitHub are not stable, so the check
 # below hashes the file contents.
 ULTRASLW_SHA="2b60a6b8fef31ba3888dc3da1c54b35ead437df2"
