@@ -5,7 +5,9 @@ A native macOS version of the AQW bot client [VibeSkua](https://github.com/Ninja
 
 ### New in this version
 
-- **UltrasLW (2.4.3):** the Lone Wolf ultra scripts come with Skua Mac. The first time you open this version they are copied into your Scripts folder, as a folder named UltrasLW, if you don't already have one. Replacing the app keeps a copy you already have. If you reset scripts, UltrasLW is put back.
+- **UltrasLW (2.4.4):** if the first copy failed and left an empty UltrasLW folder, Skua Mac installs it again. An UltrasLW folder you have not edited is replaced when a newer pack comes with the app. A folder you have edited is kept. Resetting scripts still puts UltrasLW back.
+- **Lighter on the Mac (2.4.4):** the bot does less repeated work while a script is running and while it talks to the game. Window positions and the CPU-saver setting are kept in memory instead of being read from disk over and over.
+- **UltrasLW (2.4.3):** the Lone Wolf ultra scripts come with Skua Mac. The first time you open Skua Mac they are copied into your Scripts folder, as a folder named UltrasLW, if you don't already have one.
 - **Fixed (2.4.2):** opening Script Loader, Hotkeys and other windows a second time showed "The menu being updated does not match".
 - **Fixed (2.4.1):** Skua Manager couldn't be closed. Closing its window or choosing Quit now exits it.
 - **Account Manager:** Skua Mac menu > **Account Manager...** opens Skua Manager, where you can save accounts, put
